@@ -2,6 +2,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 
 mod configs;
 mod utils;
+mod verbs;
 
 #[derive(Parser)]
 #[command(name = "grm")]
@@ -13,11 +14,15 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
-enum Commands {}
+enum Commands {
+    #[command(about = "Show the root directory for repository management")]
+    Root,
+}
 
 fn execute(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
-        _ => {
+        Some(Commands::Root) => verbs::root::execute(),
+        None => {
             Cli::command()
                 .print_help()
                 .expect("Failed to execute command: Something went wrong...");
