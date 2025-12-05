@@ -1,5 +1,8 @@
 use clap::{CommandFactory, Parser, Subcommand};
 
+mod configs;
+mod utils;
+
 #[derive(Parser)]
 #[command(name = "grm")]
 #[command(version = "1.0")]
