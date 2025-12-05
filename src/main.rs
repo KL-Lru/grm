@@ -17,11 +17,23 @@ struct Cli {
 enum Commands {
     #[command(about = "Show the root directory for repository management")]
     Root,
+
+    #[command(about = "Clone a git repository")]
+    Clone {
+        #[arg(help = "Git repository URL")]
+        url: String,
+
+        #[arg(short, long, help = "Branch to clone (queries remote if not specified)")]
+        branch: Option<String>,
+    },
 }
 
 fn execute(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    match cli.command {
+    match &cli.command {
         Some(Commands::Root) => verbs::root::execute(),
+        Some(Commands::Clone { url, branch }) => {
+            verbs::clone::execute(url, branch.as_deref())
+        }
         None => {
             Cli::command()
                 .print_help()
