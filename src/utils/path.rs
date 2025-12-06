@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 pub use std::path::absolute;
+use std::path::{Path, PathBuf};
 
 use crate::configs::ConfigError;
 
@@ -16,6 +16,37 @@ pub fn home_dir() -> Option<PathBuf> {
 /// a `ConfigError` instead of `None`.
 pub fn require_home_dir() -> Result<PathBuf, ConfigError> {
     home_dir().ok_or_else(|| ConfigError::Path("Home directory not found".into()))
+}
+
+/// Check if a directory is a git repository
+///
+/// A directory is considered a git repository if it contains a `.git` directory or file.
+/// The `.git` can be either a directory (normal repository) or a file (submodule/worktree).
+///
+/// # Arguments
+/// * `path` - Path to check
+///
+/// # Returns
+/// * `true` if the path contains a `.git` directory or file
+/// * `false` otherwise
+pub fn is_git_repository(path: &Path) -> bool {
+    let git_path = path.join(".git");
+    git_path.exists() && (git_path.is_dir() || git_path.is_file())
+}
+
+/// Check if a path is a symlink
+///
+/// # Arguments
+/// * `path` - Path to check
+///
+/// # Returns
+/// * `true` if the path is a symbolic link
+/// * `false` if not a symlink or if metadata cannot be read
+pub fn is_symlink(path: &Path) -> bool {
+    match path.symlink_metadata() {
+        Ok(metadata) => metadata.is_symlink(),
+        Err(_) => false,
+    }
 }
 
 /// Normalize a path string to an absolute ``PathBuf``

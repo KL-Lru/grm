@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use crate::configs::Config;
+use crate::{
+    configs::Config,
+    utils::path::{is_git_repository, is_symlink},
+};
 
 /// Execute the list command
 ///
@@ -124,33 +127,4 @@ fn is_valid_repo_pattern(path: &Path) -> bool {
             }
         })
         .is_some()
-}
-
-/// Check if a directory is a git repository
-///
-/// A directory is considered a git repository if it contains a `.git` directory.
-///
-/// # Arguments
-/// * `path` - Path to check
-///
-/// # Returns
-/// * `true` if the path contains a `.git` directory
-/// * `false` otherwise
-fn is_git_repository(path: &Path) -> bool {
-    path.join(".git").exists()
-}
-
-/// Check if a path is a symlink
-///
-/// # Arguments
-/// * `path` - Path to check
-///
-/// # Returns
-/// * `true` if the path is a symbolic link
-/// * `false` if not a symlink or if metadata cannot be read
-fn is_symlink(path: &Path) -> bool {
-    match path.symlink_metadata() {
-        Ok(metadata) => metadata.is_symlink(),
-        Err(_) => false,
-    }
 }
