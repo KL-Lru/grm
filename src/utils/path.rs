@@ -116,3 +116,63 @@ pub fn normalize_path(path_str: &str) -> Result<PathBuf, ConfigError> {
     // Convert to absolute path
     absolute(&path).map_err(|e| ConfigError::Path(e.to_string()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_is_git_repository() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        std::fs::create_dir(&repo_dir).unwrap();
+
+        // Initially not a git repo
+        assert!(!is_git_repository(&repo_dir));
+
+        // Create .git directory
+        let git_dir = repo_dir.join(".git");
+        std::fs::create_dir(&git_dir).unwrap();
+        assert!(is_git_repository(&repo_dir));
+    }
+
+    #[test]
+    fn test_is_git_repository_worktree() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("worktree");
+        std::fs::create_dir(&repo_dir).unwrap();
+
+        // Create .git file (like in worktrees or submodules)
+        let git_file = repo_dir.join(".git");
+        std::fs::File::create(&git_file).unwrap();
+        assert!(is_git_repository(&repo_dir));
+    }
+
+    #[test]
+    fn test_is_symlink() {
+        let temp_dir = TempDir::new().unwrap();
+        let target = temp_dir.path().join("target");
+        std::fs::File::create(&target).unwrap();
+
+        let link = temp_dir.path().join("link");
+
+        assert!(is_symlink(&link));
+        assert!(!is_symlink(&target));
+    }
+
+    #[test]
+    fn test_normalize_path_absolute() {
+        // Use a definitely absolute path
+        let abs_path = "/tmp";
+
+        let path = normalize_path(abs_path).expect("Should parse absolute path");
+        assert!(path.is_absolute());
+    }
+
+    #[test]
+    fn test_normalize_path_empty() {
+        assert!(normalize_path("").is_err());
+        assert!(normalize_path("   ").is_err());
+    }
+}
