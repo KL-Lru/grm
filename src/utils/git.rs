@@ -117,3 +117,75 @@ pub fn clone_repo(url: &str, dest: &Path, branch: Option<&str>) -> Result<(), Gi
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn setup_dummy_repo(dir: &Path) {
+        // Initialize git repo
+        Command::new("git")
+            .args(["init", "--initial-branch=test"])
+            .current_dir(dir)
+            .output()
+            .expect("Failed to init git repo");
+
+        // Set local user config to avoid "Please tell me who you are." error
+        Command::new("git")
+            .args(["config", "user.email", "you@example.com"])
+            .current_dir(dir)
+            .output()
+            .expect("Failed to set user.email");
+
+        Command::new("git")
+            .args(["config", "user.name", "Your Name"])
+            .current_dir(dir)
+            .output()
+            .expect("Failed to set user.name");
+
+        // Create a dummy file
+        std::fs::write(dir.join("README.md"), "# Dummy Repo").expect("Failed to write README.md");
+
+        // Commit it
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(dir)
+            .output()
+            .expect("Failed to git add");
+
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(dir)
+            .output()
+            .expect("Failed to git commit");
+    }
+
+    #[test]
+    fn test_get_default_branch_local() {
+        let temp_dir = TempDir::new().unwrap();
+        setup_dummy_repo(temp_dir.path());
+
+        // Use file:// URL for local repo
+        let url = format!("file://{}", temp_dir.path().display());
+        let branch = get_default_branch(&url).expect("Failed to get default branch");
+
+        assert_eq!(branch, "test");
+    }
+
+    #[test]
+    fn test_clone_repo_local() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        std::fs::create_dir(&repo_dir).unwrap();
+        setup_dummy_repo(&repo_dir);
+
+        let clone_dest = temp_dir.path().join("clone");
+        let url = format!("file://{}", repo_dir.display());
+
+        clone_repo(&url, &clone_dest, None).expect("Failed to clone repo");
+
+        assert!(clone_dest.join(".git").exists());
+        assert!(clone_dest.join("README.md").exists());
+    }
+}
