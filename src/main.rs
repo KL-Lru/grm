@@ -26,6 +26,12 @@ enum Commands {
         #[arg(short, long, help = "Branch to clone (queries remote if not specified)")]
         branch: Option<String>,
     },
+
+    #[command(about = "List managed repositories")]
+    List {
+        #[arg(long, help = "Show absolute paths instead of relative paths")]
+        full_path: bool,
+    },
 }
 
 fn execute(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
@@ -34,6 +40,7 @@ fn execute(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::Clone { url, branch }) => {
             verbs::clone::execute(url, branch.as_deref())
         }
+        Some(Commands::List { full_path }) => verbs::list::execute(*full_path),
         None => {
             Cli::command()
                 .print_help()
