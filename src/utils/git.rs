@@ -20,22 +20,72 @@ pub enum GitError {
     Io(#[from] std::io::Error),
 }
 
+/// Helper for executing git commands
+struct GitCommand<'a> {
+    args: Vec<&'a str>,
+}
+
+impl<'a> GitCommand<'a> {
+    fn new(args: &[&'a str]) -> Self {
+        Self {
+            args: args.to_vec(),
+        }
+    }
+
+    /// Execute the command and capture stdout/stderr
+    fn output(&self) -> Result<std::process::Output, GitError> {
+        let output = Command::new("git")
+            .args(&self.args)
+            .output()
+            .map_err(|error| {
+                GitError::Execution(format!(
+                    "Failed to execute git {}: {}",
+                    self.args.join(" "),
+                    error
+                ))
+            })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(GitError::Failed {
+                status: output.status.code().unwrap_or(-1),
+                stderr: stderr.to_string(),
+            });
+        }
+
+        Ok(output)
+    }
+
+    /// Execute the command with inherited stdio
+    fn execute(&self) -> Result<(), GitError> {
+        let status = Command::new("git")
+            .args(&self.args)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .map_err(|error| {
+                GitError::Execution(format!(
+                    "Failed to execute git {}: {}",
+                    self.args.join(" "),
+                    error
+                ))
+            })?;
+
+        if !status.success() {
+            return Err(GitError::Failed {
+                status: status.code().unwrap_or(-1),
+                stderr: format!("git {} failed", self.args.join(" ")),
+            });
+        }
+
+        Ok(())
+    }
+}
 /// Get the default branch name from a remote repository
 ///
 /// Uses `git ls-remote --symref` to query the remote HEAD without cloning.
 pub fn get_default_branch(url: &str) -> Result<String, GitError> {
-    let output = Command::new("git")
-        .args(["ls-remote", "--symref", url, "HEAD"])
-        .output()
-        .map_err(|e| GitError::Execution(format!("Failed to run git ls-remote: {}", e)))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(GitError::Failed {
-            status: output.status.code().unwrap_or(-1),
-            stderr: stderr.to_string(),
-        });
-    }
+    let output = GitCommand::new(&["ls-remote", "--symref", url, "HEAD"]).output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -62,30 +112,14 @@ pub fn get_default_branch(url: &str) -> Result<String, GitError> {
 /// Executes `git clone` with progress output passed through to the terminal.
 /// If branch is specified, clones only that branch with `--branch`.
 pub fn clone_repo(url: &str, dest: &Path, branch: Option<&str>) -> Result<(), GitError> {
-    let mut cmd = Command::new("git");
-    cmd.arg("clone");
+    let dest_path = dest.to_string_lossy();
+    let mut args = vec!["clone", url, dest_path.as_ref()];
 
     if let Some(b) = branch {
-        cmd.args(["--branch", b]);
+        args.extend_from_slice(&["--branch", b]);
     }
 
-    cmd.arg(url);
-    cmd.arg(dest);
-
-    // Inherit stdio to show git progress
-    cmd.stdout(Stdio::inherit());
-    cmd.stderr(Stdio::inherit());
-
-    let status = cmd
-        .status()
-        .map_err(|e| GitError::Execution(format!("Failed to run git clone: {}", e)))?;
-
-    if !status.success() {
-        return Err(GitError::Failed {
-            status: status.code().unwrap_or(-1),
-            stderr: "git clone failed (see output above)".to_string(),
-        });
-    }
+    GitCommand::new(&args).execute()?;
 
     Ok(())
 }
