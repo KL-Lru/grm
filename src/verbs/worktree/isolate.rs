@@ -9,23 +9,17 @@ use crate::utils::path::{build_shared_path, is_symlink};
 /// Execute the worktree isolate command
 ///
 /// Replaces a shared symbolic link with a concrete copy of the file/directory.
-///
-/// # Arguments
-/// * `path_str` - Relative path to the file/directory to isolate
 pub fn execute(path_str: &str) -> Result<(), GrmError> {
     let relative_path = PathBuf::from(path_str);
 
-    // 1. Validate inside managed repo
     let repo_root = git::get_repo_root().map_err(|_| GrmError::NotInManagedRepository)?;
     let remote_url =
         git::get_remote_url(&repo_root).map_err(|_| GrmError::NotInManagedRepository)?;
     let repo_info = parse_git_url(&remote_url)?;
 
-    // 2. Compute shared path
     let config = Config::load()?;
     let shared_path = build_shared_path(config.root(), &repo_info, &relative_path);
 
-    // 3. Resolve local target path
     let current_dir = std::env::current_dir()?;
     let absolute_target_path = current_dir.join(&relative_path);
 
@@ -35,19 +29,10 @@ pub fn execute(path_str: &str) -> Result<(), GrmError> {
         )));
     }
 
-    // 4. Verify it is a symlink pointing to the shared path?
-    // README says: "This operation removes the symbolic link and copies the shared file"
-    // If it's not a symlink, we should probably check if it's already a regular file.
     if !is_symlink(&absolute_target_path) {
         println!("{path_str} is already isolated (not a symlink).");
         return Ok(());
     }
-
-    // Optional: verify it points to shared_path?
-    // If user manually symlinked it elsewhere, do we still overwrite?
-    // Let's assume yes if the user wants to "isolate" it from whatever it is linked to,
-    // replacing it with the canonical shared version from .shared storage.
-    // Wait, "isolate" implies getting the content FROM the shared storage.
 
     if !shared_path.exists() {
         return Err(GrmError::NotFound(format!(

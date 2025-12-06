@@ -52,7 +52,6 @@ fn prompt_confirmation(repositories: &[PathBuf], force: bool) -> Result<bool, Gr
 /// should already be filtered by `find_matching_repositories`.
 fn remove_repositories(repositories: &[PathBuf]) -> Result<(), GrmError> {
     for repo in repositories {
-        // Safety check: skip if it's a symlink (defensive programming)
         if is_symlink(repo) {
             eprintln!(
                 "Warning: Skipping symlink: {} (unexpected, should have been filtered)",
@@ -79,14 +78,10 @@ fn remove_repositories(repositories: &[PathBuf]) -> Result<(), GrmError> {
 /// * `Ok(())` on success
 /// * `Err` if URL is invalid, repository not found, or deletion fails
 pub fn execute(url: &str, force: bool) -> Result<(), GrmError> {
-    // Parse the URL
     let repo_info = parse_git_url(url)?;
-
-    // Load configuration to get root directory
     let config = Config::load()?;
     let root = config.root();
 
-    // Find matching repositories
     let matching_repos = find_matching_repositories(root, &repo_info);
 
     if matching_repos.is_empty() {
@@ -97,12 +92,10 @@ pub fn execute(url: &str, force: bool) -> Result<(), GrmError> {
         });
     }
 
-    // Prompt for confirmation (unless --force)
     if !prompt_confirmation(&matching_repos, force)? {
         return Err(GrmError::UserCancelled);
     }
 
-    // Remove repositories
     remove_repositories(&matching_repos)?;
 
     println!(
