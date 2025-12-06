@@ -74,6 +74,12 @@ enum WorktreeCommands {
         #[arg(help = "Path to file/directory to share")]
         path: String,
     },
+
+    #[command(about = "Unshare a file/directory")]
+    Unshare {
+        #[arg(help = "Path to file/directory to unshare")]
+        path: String,
+    },
 }
 
 fn execute(cli: &Cli) -> Result<(), GrmError> {
@@ -86,6 +92,7 @@ fn execute(cli: &Cli) -> Result<(), GrmError> {
             WorktreeCommands::Split { branch } => verbs::worktree::split::execute(branch),
             WorktreeCommands::Remove { branch } => verbs::worktree::remove::execute(branch),
             WorktreeCommands::Share { path } => verbs::worktree::share::execute(path),
+            WorktreeCommands::Unshare { path } => verbs::worktree::unshare::execute(path),
         },
         None => {
             Cli::command()
