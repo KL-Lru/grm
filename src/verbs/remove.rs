@@ -1,54 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::configs::Config;
+use crate::discovery::find_matching_repositories;
 use crate::errors::GrmError;
-use crate::utils::git_url::{RepoInfo, parse_git_url};
+use crate::utils::git_url::parse_git_url;
+use crate::utils::path::is_symlink;
 use crate::utils::prompt;
-
-/// Find all repositories matching the given repository info
-///
-/// Searches for directories matching `<root>/<host>/<user>/<repo>+*` pattern.
-/// Only returns directories that contain a `.git` directory.
-///
-/// # Arguments
-/// * `root` - Root directory to search in
-/// * `info` - Parsed repository information
-///
-/// # Returns
-/// * `Ok(Vec<PathBuf>)` - List of matching repository paths
-/// * `Err` - IO error during directory scanning
-fn find_matching_repositories(
-    root: &Path,
-    info: &RepoInfo,
-) -> Result<Vec<PathBuf>, std::io::Error> {
-    let target_path = root.join(&info.host).join(&info.user);
-
-    if !target_path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let prefix = format!("{}+", info.repo);
-    let matching_repos: Vec<PathBuf> = std::fs::read_dir(&target_path)?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| {
-            // Check if it's a directory and not a symlink
-            !is_symlink(path) && path.is_dir()
-        })
-        .filter(|path| {
-            // Check if directory name starts with "<repo>+"
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with(&prefix))
-        })
-        .filter(|path| {
-            // Check if it's a git repository
-            is_git_repository(path)
-        })
-        .collect();
-
-    Ok(matching_repos)
-}
 
 /// Prompt user for confirmation before deletion
 ///
@@ -110,37 +67,6 @@ fn remove_repositories(repositories: &[PathBuf]) -> Result<(), GrmError> {
     Ok(())
 }
 
-/// Check if a directory is a git repository
-///
-/// A directory is considered a git repository if it contains a `.git` directory or file.
-/// The `.git` can be either a directory (normal repository) or a file (submodule/worktree).
-///
-/// # Arguments
-/// * `path` - Path to check
-///
-/// # Returns
-/// * `true` if the path contains a `.git` directory or file
-/// * `false` otherwise
-fn is_git_repository(path: &Path) -> bool {
-    let git_path = path.join(".git");
-    git_path.exists() && (git_path.is_dir() || git_path.is_file())
-}
-
-/// Check if a path is a symlink
-///
-/// # Arguments
-/// * `path` - Path to check
-///
-/// # Returns
-/// * `true` if the path is a symbolic link
-/// * `false` if not a symlink or if metadata cannot be read
-fn is_symlink(path: &Path) -> bool {
-    match path.symlink_metadata() {
-        Ok(metadata) => metadata.is_symlink(),
-        Err(_) => false,
-    }
-}
-
 /// Execute the remove command
 ///
 /// Removes all branches of a repository matching the given URL.
@@ -161,7 +87,7 @@ pub fn execute(url: &str, force: bool) -> Result<(), GrmError> {
     let root = config.root();
 
     // Find matching repositories
-    let matching_repos = find_matching_repositories(root, &repo_info)?;
+    let matching_repos = find_matching_repositories(root, &repo_info);
 
     if matching_repos.is_empty() {
         let searched_path = root.join(&repo_info.host).join(&repo_info.user);

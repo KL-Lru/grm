@@ -1,6 +1,7 @@
 use clap::{CommandFactory, Parser, Subcommand};
 
 mod configs;
+mod discovery;
 mod errors;
 mod utils;
 mod verbs;

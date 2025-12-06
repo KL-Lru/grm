@@ -156,6 +156,7 @@ mod tests {
         std::fs::File::create(&target).unwrap();
 
         let link = temp_dir.path().join("link");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
 
         assert!(is_symlink(&link));
         assert!(!is_symlink(&target));
