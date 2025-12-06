@@ -53,5 +53,60 @@ pub fn execute(branch: &str) -> Result<(), GrmError> {
 
     println!("{}", dest_path.display());
 
+    // Check availability of shared files and link them
+    let shared_root = config
+        .root()
+        .join(".shared")
+        .join(&repo_info.host)
+        .join(&repo_info.user)
+        .join(&repo_info.repo);
+
+    if shared_root.exists() {
+        link_shared_files(&shared_root, &dest_path, &shared_root)?;
+    }
+
+    Ok(())
+}
+
+fn link_shared_files(
+    current_dir: &std::path::Path,
+    worktree_root: &std::path::Path,
+    shared_root: &std::path::Path,
+) -> Result<(), GrmError> {
+    if !current_dir.is_dir() {
+        return Ok(());
+    }
+
+    for entry in std::fs::read_dir(current_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            link_shared_files(&path, worktree_root, shared_root)?;
+        } else {
+            // It's a file, create symlink in worktree
+            let relative_path = path
+                .strip_prefix(shared_root)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+
+            let target_path = worktree_root.join(relative_path);
+
+            // Ensure parent dir exists
+            if let Some(parent) = target_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+
+            // Remove if exists
+            if target_path.exists() {
+                if target_path.is_dir() {
+                    std::fs::remove_dir_all(&target_path)?;
+                } else {
+                    std::fs::remove_file(&target_path)?;
+                }
+            }
+
+            std::os::unix::fs::symlink(&path, &target_path)?;
+        }
+    }
     Ok(())
 }

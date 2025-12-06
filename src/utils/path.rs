@@ -59,6 +59,17 @@ pub fn build_repo_path(root: &Path, info: &RepoInfo, branch: &str) -> PathBuf {
         .join(format!("{}+{}", info.repo, branch))
 }
 
+/// Build a shared storage path for a repository
+///
+/// Creates a path following the `$(grm root)/.shared/<host>/<user>/<repo>/<relative_path>` pattern.
+pub fn build_shared_path(root: &Path, info: &RepoInfo, relative_path: &Path) -> PathBuf {
+    root.join(".shared")
+        .join(&info.host)
+        .join(&info.user)
+        .join(&info.repo)
+        .join(relative_path)
+}
+
 /// Normalize a path string to an absolute ``PathBuf``
 ///
 /// # Path Resolution Rules
@@ -185,5 +196,20 @@ mod tests {
     fn test_normalize_path_empty() {
         assert!(normalize_path("").is_err());
         assert!(normalize_path("   ").is_err());
+    }
+
+    #[test]
+    fn test_build_shared_path() {
+        let root = PathBuf::from("/home/user/grm");
+        let info = RepoInfo {
+            host: "github.com".to_string(),
+            user: "test".to_string(),
+            repo: "repo".to_string(),
+        };
+        let path = build_shared_path(&root, &info, Path::new(".env"));
+        assert_eq!(
+            path,
+            PathBuf::from("/home/user/grm/.shared/github.com/test/repo/.env")
+        );
     }
 }

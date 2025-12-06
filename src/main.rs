@@ -68,6 +68,12 @@ enum WorktreeCommands {
         #[arg(help = "Branch name")]
         branch: String,
     },
+
+    #[command(about = "Share a file/directory between worktrees")]
+    Share {
+        #[arg(help = "Path to file/directory to share")]
+        path: String,
+    },
 }
 
 fn execute(cli: &Cli) -> Result<(), GrmError> {
@@ -79,6 +85,7 @@ fn execute(cli: &Cli) -> Result<(), GrmError> {
         Some(Commands::Worktree { command }) => match command {
             WorktreeCommands::Split { branch } => verbs::worktree::split::execute(branch),
             WorktreeCommands::Remove { branch } => verbs::worktree::remove::execute(branch),
+            WorktreeCommands::Share { path } => verbs::worktree::share::execute(path),
         },
         None => {
             Cli::command()

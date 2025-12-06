@@ -224,6 +224,32 @@ pub fn remove_worktree(repo_path: &Path, worktree_path: &Path) -> Result<(), Git
     Ok(())
 }
 
+/// Get listing of all worktrees
+///
+/// Uses `git worktree list --porcelain` to get machine-readable output.
+/// Returns a list of absolute paths to worktrees.
+pub fn get_worktrees(repo_root: &Path) -> Result<Vec<PathBuf>, GitError> {
+    let repo_path_str = repo_root.to_string_lossy();
+    let output = GitCommand::new(&[
+        "-C",
+        repo_path_str.as_ref(),
+        "worktree",
+        "list",
+        "--porcelain",
+    ])
+    .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let mut worktrees = Vec::new();
+    for line in stdout.lines() {
+        if let Some(path) = line.strip_prefix("worktree ") {
+            worktrees.push(PathBuf::from(path));
+        }
+    }
+
+    Ok(worktrees)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -322,5 +348,40 @@ mod tests {
         remove_worktree(&repo_dir, &worktree_path).expect("Failed to remove worktree");
 
         assert!(!worktree_path.exists());
+    }
+
+    #[test]
+    fn test_get_worktrees() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        std::fs::create_dir(&repo_dir).unwrap();
+        setup_dummy_repo(&repo_dir);
+
+        // First worktree is the main repo
+        let worktrees = get_worktrees(&repo_dir).expect("Failed to get worktrees");
+        // git worktree list returns absolute paths, but on some systems /tmp might be /private/tmp
+        // so we check count and existence.
+        assert_eq!(worktrees.len(), 1);
+        // Resolve symlinks to be sure if temp_dir contains symlinks
+        let repo_real_path = std::fs::canonicalize(&repo_dir).unwrap();
+        let wt_real_path = std::fs::canonicalize(&worktrees[0]).unwrap();
+        assert_eq!(wt_real_path, repo_real_path);
+
+        // Add a worktree
+        let worktree_path = temp_dir.path().join("worktree");
+        Command::new("git")
+            .args([
+                "worktree",
+                "add",
+                "-b",
+                "new-branch",
+                worktree_path.to_str().unwrap(),
+            ])
+            .current_dir(&repo_dir)
+            .output()
+            .expect("Failed to add worktree");
+
+        let worktrees = get_worktrees(&repo_dir).expect("Failed to get worktrees");
+        assert_eq!(worktrees.len(), 2);
     }
 }
