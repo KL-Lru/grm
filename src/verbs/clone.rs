@@ -1,24 +1,9 @@
 use std::path::PathBuf;
-use thiserror::Error;
 
 use crate::configs::Config;
-use crate::utils::git_repository::{RepoInfo, parse_git_url};
+use crate::errors::GrmError;
 use crate::utils::git;
-
-#[derive(Debug, Error)]
-pub enum CloneError {
-    #[error("Directory already exists: {0}")]
-    DirectoryExists(String),
-
-    #[error("Git operation failed: {0}")]
-    Git(#[from] git::GitError),
-
-    #[error("Config error: {0}")]
-    Config(#[from] crate::configs::ConfigError),
-
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-}
+use crate::utils::git_url::{RepoInfo, parse_git_url};
 
 /// Build the destination path for a cloned repository
 fn build_dest_path(root: &std::path::Path, info: &RepoInfo, branch: &str) -> PathBuf {
@@ -28,7 +13,7 @@ fn build_dest_path(root: &std::path::Path, info: &RepoInfo, branch: &str) -> Pat
 }
 
 /// Execute the clone command
-pub fn execute(url: &str, branch: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn execute(url: &str, branch: Option<&str>) -> Result<(), GrmError> {
     // Parse the URL
     let repo_info = parse_git_url(url)?;
 
@@ -46,9 +31,7 @@ pub fn execute(url: &str, branch: Option<&str>) -> Result<(), Box<dyn std::error
 
     // Check if directory already exists
     if dest_path.exists() {
-        return Err(Box::new(CloneError::DirectoryExists(
-            dest_path.display().to_string(),
-        )));
+        return Err(GrmError::AlreadyManaged(dest_path.display().to_string()));
     }
 
     // Create parent directories

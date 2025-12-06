@@ -1,54 +1,57 @@
 use clap::{CommandFactory, Parser, Subcommand};
 
 mod configs;
+mod errors;
 mod utils;
 mod verbs;
 
-#[derive(Parser)]
-#[command(name = "grm")]
-#[command(version = "1.0")]
-#[command(about = "Grm - Git CLI for Repository Management")]
+use errors::GrmError;
+
+#[derive(Parser, Debug)]
+#[command(name = "grm", version, about = "Git Repository Manager", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(about = "Show the root directory for repository management")]
+    #[command(about = "Show the root directory for managed repositories")]
     Root,
 
-    #[command(about = "Clone a git repository")]
+    #[command(about = "Clone a repository into the managed structure")]
     Clone {
         #[arg(help = "Git repository URL")]
         url: String,
 
-        #[arg(short, long, help = "Branch to clone (queries remote if not specified)")]
+        #[arg(
+            short,
+            long,
+            help = "Branch to clone (queries remote if not specified)"
+        )]
         branch: Option<String>,
     },
 
     #[command(about = "List managed repositories")]
     List {
-        #[arg(long, help = "Show absolute paths instead of relative paths")]
+        #[arg(short, long, help = "Show full absolute paths")]
         full_path: bool,
     },
 
-    #[command(about = "Remove repositories matching a URL")]
+    #[command(about = "Remove a repository")]
     Remove {
-        #[arg(help = "Git repository URL")]
+        #[arg(help = "Git repository URL (e.g. github.com/user/repo)")]
         url: String,
 
-        #[arg(short, long, help = "Skip confirmation prompt")]
+        #[arg(short, long, help = "Force removal without confirmation")]
         force: bool,
     },
 }
 
-fn execute(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+fn execute(cli: &Cli) -> Result<(), GrmError> {
     match &cli.command {
         Some(Commands::Root) => verbs::root::execute(),
-        Some(Commands::Clone { url, branch }) => {
-            verbs::clone::execute(url, branch.as_deref())
-        }
+        Some(Commands::Clone { url, branch }) => verbs::clone::execute(url, branch.as_deref()),
         Some(Commands::List { full_path }) => verbs::list::execute(*full_path),
         Some(Commands::Remove { url, force }) => verbs::remove::execute(url, *force),
         None => {
@@ -62,12 +65,8 @@ fn execute(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
 
 fn main() {
     let cli = Cli::parse();
-
-    match execute(&cli) {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("Error: {e}");
-            std::process::exit(1);
-        }
+    if let Err(error) = execute(&cli) {
+        eprintln!("Error: {error}");
+        std::process::exit(1);
     }
 }

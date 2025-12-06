@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{
     configs::Config,
+    errors::GrmError,
     utils::path::{is_git_repository, is_symlink},
 };
 
@@ -16,7 +17,7 @@ use crate::{
 /// # Returns
 /// * `Ok(())` on success
 /// * `Err` if configuration loading or directory scanning fails
-pub fn execute(full_path: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn execute(full_path: bool) -> Result<(), GrmError> {
     let config = Config::load()?;
     let root = config.root();
 

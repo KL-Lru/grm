@@ -1,31 +1,9 @@
 use std::path::{Path, PathBuf};
-use thiserror::Error;
 
 use crate::configs::Config;
+use crate::errors::GrmError;
 use crate::utils::git_url::{RepoInfo, parse_git_url};
 use crate::utils::prompt;
-
-#[derive(Debug, Error)]
-pub enum RemoveError {
-    #[error("No repositories found for URL: {url}\nSearched in: {searched_path}")]
-    RepositoryNotFound { url: String, searched_path: String },
-
-    #[error("Failed to delete {path}: {source}")]
-    DeletionFailed {
-        path: String,
-        #[source]
-        source: std::io::Error,
-    },
-
-    #[error("Operation cancelled by user")]
-    UserCancelled,
-
-    #[error("Config error: {0}")]
-    Config(#[from] crate::configs::ConfigError),
-
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-}
 
 /// Find all repositories matching the given repository info
 ///
@@ -86,7 +64,7 @@ fn find_matching_repositories(
 /// * `Ok(true)` if deletion should proceed
 /// * `Ok(false)` if user cancelled
 /// * `Err` - IO error during prompt
-fn prompt_confirmation(repositories: &[PathBuf], force: bool) -> Result<bool, RemoveError> {
+fn prompt_confirmation(repositories: &[PathBuf], force: bool) -> Result<bool, GrmError> {
     if force {
         return Ok(true);
     }
@@ -116,7 +94,7 @@ fn prompt_confirmation(repositories: &[PathBuf], force: bool) -> Result<bool, Re
 /// This function uses `remove_dir_all` which recursively deletes directories.
 /// Symlink check is performed as a safety measure, though repositories
 /// should already be filtered by `find_matching_repositories`.
-fn remove_repositories(repositories: &[PathBuf]) -> Result<(), RemoveError> {
+fn remove_repositories(repositories: &[PathBuf]) -> Result<(), GrmError> {
     for repo in repositories {
         // Safety check: skip if it's a symlink (defensive programming)
         if is_symlink(repo) {
@@ -127,10 +105,7 @@ fn remove_repositories(repositories: &[PathBuf]) -> Result<(), RemoveError> {
             continue;
         }
 
-        std::fs::remove_dir_all(repo).map_err(|source| RemoveError::DeletionFailed {
-            path: repo.display().to_string(),
-            source,
-        })?;
+        std::fs::remove_dir_all(repo)?;
         println!("Removed: {}", repo.display());
     }
     Ok(())
@@ -178,7 +153,7 @@ fn is_symlink(path: &Path) -> bool {
 /// # Returns
 /// * `Ok(())` on success
 /// * `Err` if URL is invalid, repository not found, or deletion fails
-pub fn execute(url: &str, force: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn execute(url: &str, force: bool) -> Result<(), GrmError> {
     // Parse the URL
     let repo_info = parse_git_url(url)?;
 
@@ -191,15 +166,15 @@ pub fn execute(url: &str, force: bool) -> Result<(), Box<dyn std::error::Error>>
 
     if matching_repos.is_empty() {
         let searched_path = root.join(&repo_info.host).join(&repo_info.user);
-        return Err(Box::new(RemoveError::RepositoryNotFound {
+        return Err(GrmError::UnmanagedRepository {
             url: url.to_string(),
             searched_path: searched_path.display().to_string(),
-        }));
+        });
     }
 
     // Prompt for confirmation (unless --force)
     if !prompt_confirmation(&matching_repos, force)? {
-        return Err(Box::new(RemoveError::UserCancelled));
+        return Err(GrmError::UserCancelled);
     }
 
     // Remove repositories

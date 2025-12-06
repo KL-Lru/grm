@@ -4,9 +4,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum GitError {
-    #[error("Invalid git URL: {0}")]
-    InvalidUrl(String),
-
     #[error("Failed to execute git command: {0}")]
     Execution(String),
 
@@ -15,9 +12,6 @@ pub enum GitError {
 
     #[error("Failed to parse git output: {0}")]
     Parse(String),
-
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
 }
 
 /// Helper for executing git commands

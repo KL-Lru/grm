@@ -11,7 +11,7 @@ pub struct RepoInfo {
 #[derive(Debug, Error)]
 pub enum UrlError {
     #[error("Invalid git URL: {0}")]
-    InvalidUrl(String),
+    Invalid(String),
 }
 
 /// Parse a git URL (HTTPS or SSH) into components
@@ -38,7 +38,7 @@ pub fn parse_git_url(url: &str) -> Result<RepoInfo, UrlError> {
         if let Some(url_without_scheme) = url.strip_prefix(prefix) {
             let parts: Vec<&str> = url_without_scheme.splitn(2, separator).collect();
             if parts.len() != 2 {
-                return Err(UrlError::InvalidUrl(format!(
+                return Err(UrlError::Invalid(format!(
                     "Expected format: {prefix}host{separator}user/repo, got: {url}",
                 )));
             }
@@ -48,7 +48,7 @@ pub fn parse_git_url(url: &str) -> Result<RepoInfo, UrlError> {
 
             let path_parts: Vec<&str> = path.split('/').collect();
             if path_parts.len() < 2 {
-                return Err(UrlError::InvalidUrl(format!(
+                return Err(UrlError::Invalid(format!(
                     "Expected format: {prefix}host{separator}user/repo, got: {url}",
                 )));
             }
@@ -64,7 +64,7 @@ pub fn parse_git_url(url: &str) -> Result<RepoInfo, UrlError> {
         }
     }
 
-    Err(UrlError::InvalidUrl(format!(
+    Err(UrlError::Invalid(format!(
         "Unsupported URL format. Supported: https://, git@, ssh://. Got: {url}",
     )))
 }

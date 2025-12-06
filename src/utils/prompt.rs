@@ -1,5 +1,7 @@
 use std::io::{self, Write};
 
+use crate::errors::GrmError;
+
 /// Prompt the user for yes/no confirmation
 ///
 /// Displays a message and waits for user input.
@@ -20,8 +22,8 @@ use std::io::{self, Write};
 ///     // proceed with deletion
 /// }
 /// ```
-pub fn confirm(message: &str) -> Result<bool, io::Error> {
-    print!("{} [y/N]: ", message);
+pub fn confirm(message: &str) -> Result<bool, GrmError> {
+    print!("{message} [y/N]: ");
     io::stdout().flush()?;
 
     let mut input = String::new();
