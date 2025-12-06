@@ -207,6 +207,23 @@ pub fn add_worktree(path: &Path, branch: &str, new_branch: bool) -> Result<(), G
     Ok(())
 }
 
+/// Remove a worktree
+///
+/// Executes `git worktree remove` to remove a worktree.
+pub fn remove_worktree(repo_path: &Path, worktree_path: &Path) -> Result<(), GitError> {
+    let repo_path_str = repo_path.to_string_lossy();
+    let worktree_path_str = worktree_path.to_string_lossy();
+    GitCommand::new(&[
+        "-C",
+        repo_path_str.as_ref(), // Run in repo context
+        "worktree",
+        "remove",
+        worktree_path_str.as_ref(),
+    ])
+    .execute()?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -276,5 +293,34 @@ mod tests {
 
         assert!(clone_dest.join(".git").exists());
         assert!(clone_dest.join("README.md").exists());
+    }
+
+    #[test]
+    fn test_remove_worktree() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        std::fs::create_dir(&repo_dir).unwrap();
+        setup_dummy_repo(&repo_dir);
+
+        // Add a worktree
+        let worktree_path = temp_dir.path().join("worktree");
+        Command::new("git")
+            .args([
+                "worktree",
+                "add",
+                "-b",
+                "new-branch",
+                worktree_path.to_str().unwrap(),
+            ])
+            .current_dir(&repo_dir)
+            .output()
+            .expect("Failed to add worktree");
+
+        assert!(worktree_path.exists());
+
+        // Remove it
+        remove_worktree(&repo_dir, &worktree_path).expect("Failed to remove worktree");
+
+        assert!(!worktree_path.exists());
     }
 }

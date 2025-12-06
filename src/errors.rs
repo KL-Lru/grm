@@ -27,4 +27,7 @@ pub enum GrmError {
 
     #[error("Not in a managed git repository")]
     NotInManagedRepository,
+
+    #[error("Resource not found: {0}")]
+    NotFound(String),
 }

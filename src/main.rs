@@ -62,6 +62,12 @@ enum WorktreeCommands {
         #[arg(help = "Branch name")]
         branch: String,
     },
+
+    #[command(about = "Remove a worktree")]
+    Remove {
+        #[arg(help = "Branch name")]
+        branch: String,
+    },
 }
 
 fn execute(cli: &Cli) -> Result<(), GrmError> {
@@ -72,6 +78,7 @@ fn execute(cli: &Cli) -> Result<(), GrmError> {
         Some(Commands::Remove { url, force }) => verbs::remove::execute(url, *force),
         Some(Commands::Worktree { command }) => match command {
             WorktreeCommands::Split { branch } => verbs::worktree::split::execute(branch),
+            WorktreeCommands::Remove { branch } => verbs::worktree::remove::execute(branch),
         },
         None => {
             Cli::command()
