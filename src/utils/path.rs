@@ -2,6 +2,7 @@ pub use std::path::absolute;
 use std::path::{Path, PathBuf};
 
 use crate::configs::ConfigError;
+use crate::utils::git_url::RepoInfo;
 
 /// Get the home directory path
 ///
@@ -47,6 +48,15 @@ pub fn is_symlink(path: &Path) -> bool {
         Ok(metadata) => metadata.is_symlink(),
         Err(_) => false,
     }
+}
+
+/// Build a repository path following the grm structure
+///
+/// Creates a path following the `<root>/<host>/<user>/<repo>+<branch>` pattern.
+pub fn build_repo_path(root: &Path, info: &RepoInfo, branch: &str) -> PathBuf {
+    root.join(&info.host)
+        .join(&info.user)
+        .join(format!("{}+{}", info.repo, branch))
 }
 
 /// Normalize a path string to an absolute ``PathBuf``
