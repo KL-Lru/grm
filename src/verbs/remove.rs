@@ -39,8 +39,7 @@ fn find_matching_repositories(
             // Check if directory name starts with "<repo>+"
             path.file_name()
                 .and_then(|name| name.to_str())
-                .map(|name| name.starts_with(&prefix))
-                .unwrap_or(false)
+                .is_some_and(|name| name.starts_with(&prefix))
         })
         .filter(|path| {
             // Check if it's a git repository
@@ -75,7 +74,7 @@ fn prompt_confirmation(repositories: &[PathBuf], force: bool) -> Result<bool, Gr
     }
     println!();
 
-    Ok(prompt::confirm("Do you want to continue?")?)
+    prompt::confirm("Do you want to continue?")
 }
 
 /// Delete the given repositories

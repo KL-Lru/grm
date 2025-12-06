@@ -28,7 +28,7 @@ pub fn execute(full_path: bool) -> Result<(), GrmError> {
     }
 
     // Scan for repositories
-    let mut repositories = scan_repositories(root)?;
+    let mut repositories = scan_repositories(root);
 
     // If no repositories found, print "Nothing to display"
     if repositories.is_empty() {
@@ -66,7 +66,7 @@ pub fn execute(full_path: bool) -> Result<(), GrmError> {
 /// # Returns
 /// * `Ok(Vec<PathBuf>)` - List of absolute paths to discovered repositories
 /// * `Err` - IO error (currently returns empty list on error)
-fn scan_repositories(root: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
+fn scan_repositories(root: &Path) -> Vec<PathBuf> {
     let host_dirs: Vec<PathBuf> = read_valid_directories(root).collect();
 
     let user_dirs: Vec<PathBuf> = host_dirs
@@ -80,7 +80,7 @@ fn scan_repositories(root: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
         .filter(|repo_path| is_valid_repo_pattern(repo_path) && is_git_repository(repo_path))
         .collect();
 
-    Ok(repositories)
+    repositories
 }
 
 /// Read directories from a path, filtering out symlinks and non-directories
@@ -94,7 +94,7 @@ fn read_valid_directories(path: &Path) -> impl Iterator<Item = PathBuf> {
         .ok()
         .into_iter()
         .flatten()
-        .filter_map(|entry| entry.ok())
+        .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|p| !is_symlink(p) && p.is_dir())
 }
