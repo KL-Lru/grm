@@ -2,18 +2,13 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use crate::configs::Config;
+use crate::utils::discover::{RepoInfo, parse_git_url};
 use crate::utils::prompt;
 
 #[derive(Debug, Error)]
 pub enum RemoveError {
-    #[error("Invalid git URL: {0}")]
-    InvalidUrl(String),
-
     #[error("No repositories found for URL: {url}\nSearched in: {searched_path}")]
-    RepositoryNotFound {
-        url: String,
-        searched_path: String,
-    },
+    RepositoryNotFound { url: String, searched_path: String },
 
     #[error("Failed to delete {path}: {source}")]
     DeletionFailed {
@@ -32,116 +27,6 @@ pub enum RemoveError {
     Io(#[from] std::io::Error),
 }
 
-/// Parsed repository information from a git URL
-#[derive(Debug)]
-struct RepoInfo {
-    host: String,
-    user: String,
-    repo: String,
-}
-
-/// Parse a git URL (HTTPS or SSH) into components
-///
-/// Supports:
-/// - `https://github.com/user/repo.git`
-/// - `https://github.com/user/repo`
-/// - `git@github.com:user/repo.git`
-/// - `ssh://git@github.com/user/repo.git`
-fn parse_git_url(url: &str) -> Result<RepoInfo, RemoveError> {
-    let url = url.trim();
-
-    // HTTPS format: https://host/user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("https://") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, '/').collect();
-        if parts.len() != 2 {
-            return Err(RemoveError::InvalidUrl(format!(
-                "Expected format: https://host/user/repo, got: {url}",
-            )));
-        }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(RemoveError::InvalidUrl(format!(
-                "Expected format: https://host/user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
-    }
-
-    // SSH format: git@host:user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("git@") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, ':').collect();
-        if parts.len() != 2 {
-            return Err(RemoveError::InvalidUrl(format!(
-                "Expected format: git@host:user/repo, got: {url}",
-            )));
-        }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(RemoveError::InvalidUrl(format!(
-                "Expected format: git@host:user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
-    }
-
-    // ssh:// format: ssh://git@host/user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("ssh://git@") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, '/').collect();
-        if parts.len() != 2 {
-            return Err(RemoveError::InvalidUrl(format!(
-                "Expected format: ssh://git@host/user/repo, got: {url}",
-            )));
-        }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(RemoveError::InvalidUrl(format!(
-                "Expected format: ssh://git@host/user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
-    }
-
-    Err(RemoveError::InvalidUrl(format!(
-        "Unsupported URL format. Supported: https://, git@, ssh://. Got: {url}",
-    )))
-}
-
 /// Find all repositories matching the given repository info
 ///
 /// Searches for directories matching `<root>/<host>/<user>/<repo>+*` pattern.
@@ -154,7 +39,10 @@ fn parse_git_url(url: &str) -> Result<RepoInfo, RemoveError> {
 /// # Returns
 /// * `Ok(Vec<PathBuf>)` - List of matching repository paths
 /// * `Err` - IO error during directory scanning
-fn find_matching_repositories(root: &Path, info: &RepoInfo) -> Result<Vec<PathBuf>, std::io::Error> {
+fn find_matching_repositories(
+    root: &Path,
+    info: &RepoInfo,
+) -> Result<Vec<PathBuf>, std::io::Error> {
     let target_path = root.join(&info.host).join(&info.user);
 
     if !target_path.exists() {
@@ -163,7 +51,7 @@ fn find_matching_repositories(root: &Path, info: &RepoInfo) -> Result<Vec<PathBu
 
     let prefix = format!("{}+", info.repo);
     let matching_repos: Vec<PathBuf> = std::fs::read_dir(&target_path)?
-        .filter_map(|entry| entry.ok())
+        .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| {
             // Check if it's a directory and not a symlink

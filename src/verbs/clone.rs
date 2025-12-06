@@ -2,13 +2,11 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 use crate::configs::Config;
+use crate::utils::discover::{RepoInfo, parse_git_url};
 use crate::utils::git;
 
 #[derive(Debug, Error)]
 pub enum CloneError {
-    #[error("Invalid git URL: {0}")]
-    InvalidUrl(String),
-
     #[error("Directory already exists: {0}")]
     DirectoryExists(String),
 
@@ -20,116 +18,6 @@ pub enum CloneError {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-}
-
-/// Parsed repository information from a git URL
-#[derive(Debug)]
-struct RepoInfo {
-    host: String,
-    user: String,
-    repo: String,
-}
-
-/// Parse a git URL (HTTPS or SSH) into components
-///
-/// Supports:
-/// - `https://github.com/user/repo.git`
-/// - `https://github.com/user/repo`
-/// - `git@github.com:user/repo.git`
-/// - `ssh://git@github.com/user/repo.git`
-fn parse_git_url(url: &str) -> Result<RepoInfo, CloneError> {
-    let url = url.trim();
-
-    // HTTPS format: https://host/user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("https://") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, '/').collect();
-        if parts.len() != 2 {
-            return Err(CloneError::InvalidUrl(format!(
-                "Expected format: https://host/user/repo, got: {url}",
-            )));
-        }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(CloneError::InvalidUrl(format!(
-                "Expected format: https://host/user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
-    }
-
-    // SSH format: git@host:user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("git@") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, ':').collect();
-        if parts.len() != 2 {
-            return Err(CloneError::InvalidUrl(format!(
-                "Expected format: git@host:user/repo, got: {url}",
-            )));
-        }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(CloneError::InvalidUrl(format!(
-                "Expected format: git@host:user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
-    }
-
-    // ssh:// format: ssh://git@host/user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("ssh://git@") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, '/').collect();
-        if parts.len() != 2 {
-            return Err(CloneError::InvalidUrl(format!(
-                "Expected format: ssh://git@host/user/repo, got: {url}",
-            )));
-        }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(CloneError::InvalidUrl(format!(
-                "Expected format: ssh://git@host/user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
-    }
-
-    Err(CloneError::InvalidUrl(format!(
-        "Unsupported URL format. Supported: https://, git@, ssh://. Got: {url}",
-    )))
 }
 
 /// Build the destination path for a cloned repository
