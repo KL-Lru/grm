@@ -1,4 +1,3 @@
-use std::path::Path;
 use thiserror::Error;
 
 /// Parsed repository information from a git URL
@@ -10,12 +9,9 @@ pub struct RepoInfo {
 }
 
 #[derive(Debug, Error)]
-pub enum DiscoverError {
+pub enum UrlError {
     #[error("Invalid git URL: {0}")]
     InvalidUrl(String),
-
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
 }
 
 /// Parse a git URL (HTTPS or SSH) into components
@@ -31,8 +27,8 @@ pub enum DiscoverError {
 ///
 /// # Returns
 /// * `Ok(RepoInfo)` - Parsed repository information
-/// * `Err(DiscoverError::InvalidUrl)` - If URL format is not supported
-pub fn parse_git_url(url: &str) -> Result<RepoInfo, DiscoverError> {
+/// * `Err(UrlError::InvalidUrl)` - If URL format is not supported
+pub fn parse_git_url(url: &str) -> Result<RepoInfo, UrlError> {
     let url = url.trim();
 
     // (prefix, separator)
@@ -42,7 +38,7 @@ pub fn parse_git_url(url: &str) -> Result<RepoInfo, DiscoverError> {
         if let Some(url_without_scheme) = url.strip_prefix(prefix) {
             let parts: Vec<&str> = url_without_scheme.splitn(2, separator).collect();
             if parts.len() != 2 {
-                return Err(DiscoverError::InvalidUrl(format!(
+                return Err(UrlError::InvalidUrl(format!(
                     "Expected format: {prefix}host{separator}user/repo, got: {url}",
                 )));
             }
@@ -52,7 +48,7 @@ pub fn parse_git_url(url: &str) -> Result<RepoInfo, DiscoverError> {
 
             let path_parts: Vec<&str> = path.split('/').collect();
             if path_parts.len() < 2 {
-                return Err(DiscoverError::InvalidUrl(format!(
+                return Err(UrlError::InvalidUrl(format!(
                     "Expected format: {prefix}host{separator}user/repo, got: {url}",
                 )));
             }
@@ -68,25 +64,9 @@ pub fn parse_git_url(url: &str) -> Result<RepoInfo, DiscoverError> {
         }
     }
 
-    Err(DiscoverError::InvalidUrl(format!(
+    Err(UrlError::InvalidUrl(format!(
         "Unsupported URL format. Supported: https://, git@, ssh://. Got: {url}",
     )))
-}
-
-/// Check if a directory is a git repository
-///
-/// A directory is considered a git repository if it contains a `.git` directory or file.
-/// The `.git` can be either a directory (normal repository) or a file (submodule/worktree).
-///
-/// # Arguments
-/// * `path` - Path to check
-///
-/// # Returns
-/// * `true` if the path contains a `.git` directory or file
-/// * `false` otherwise
-pub fn is_git_repository(path: &Path) -> bool {
-    let git_path = path.join(".git");
-    git_path.exists() && (git_path.is_dir() || git_path.is_file())
 }
 
 #[cfg(test)]

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 use crate::configs::Config;
-use crate::utils::discover::{RepoInfo, parse_git_url};
+use crate::utils::git_repository::{RepoInfo, parse_git_url};
 use crate::utils::git;
 
 #[derive(Debug, Error)]
