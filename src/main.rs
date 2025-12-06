@@ -47,6 +47,21 @@ enum Commands {
         #[arg(short, long, help = "Force removal without confirmation")]
         force: bool,
     },
+
+    #[command(about = "Manage git worktrees")]
+    Worktree {
+        #[command(subcommand)]
+        command: WorktreeCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum WorktreeCommands {
+    #[command(about = "Create a new worktree for a branch")]
+    Split {
+        #[arg(help = "Branch name")]
+        branch: String,
+    },
 }
 
 fn execute(cli: &Cli) -> Result<(), GrmError> {
@@ -55,6 +70,9 @@ fn execute(cli: &Cli) -> Result<(), GrmError> {
         Some(Commands::Clone { url, branch }) => verbs::clone::execute(url, branch.as_deref()),
         Some(Commands::List { full_path }) => verbs::list::execute(*full_path),
         Some(Commands::Remove { url, force }) => verbs::remove::execute(url, *force),
+        Some(Commands::Worktree { command }) => match command {
+            WorktreeCommands::Split { branch } => verbs::worktree::split::execute(branch),
+        },
         None => {
             Cli::command()
                 .print_help()

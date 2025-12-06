@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use thiserror::Error;
 
@@ -111,6 +111,95 @@ pub fn clone_repo(url: &str, dest: &Path, branch: Option<&str>) -> Result<(), Gi
 
     if let Some(b) = branch {
         args.extend_from_slice(&["--branch", b]);
+    }
+
+    GitCommand::new(&args).execute()?;
+
+    Ok(())
+}
+
+/// Get the git repository root from current directory
+///
+/// Uses `git rev-parse --show-toplevel` to find the repository root.
+pub fn get_repo_root() -> Result<PathBuf, GitError> {
+    let output = GitCommand::new(&["rev-parse", "--show-toplevel"]).output()?;
+    let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if root.is_empty() {
+        return Err(GitError::Parse(
+            "Could not determine repository root".to_string(),
+        ));
+    }
+
+    Ok(PathBuf::from(root))
+}
+
+/// Get remote URL for a repository
+///
+/// Uses `git config --get remote.origin.url` to get the remote URL.
+pub fn get_remote_url(repo_path: &Path) -> Result<String, GitError> {
+    let output = GitCommand::new(&[
+        "-C",
+        &repo_path.to_string_lossy(),
+        "config",
+        "--get",
+        "remote.origin.url",
+    ])
+    .output()?;
+
+    let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if url.is_empty() {
+        return Err(GitError::Parse("No remote URL found".to_string()));
+    }
+
+    Ok(url)
+}
+
+/// Check if a branch exists locally
+///
+/// Uses `git rev-parse --verify` to check if a branch exists locally.
+pub fn local_branch_exists(branch: &str) -> Result<bool, GitError> {
+    let ref_name = format!("refs/heads/{branch}");
+    let result = GitCommand::new(&["rev-parse", "--verify", &ref_name]).output();
+
+    match result {
+        Ok(_) => Ok(true),
+        Err(GitError::Failed { .. }) => Ok(false),
+        Err(e) => Err(e),
+    }
+}
+
+/// Check if a branch exists on remote
+///
+/// Uses `git ls-remote --heads` to check if a branch exists (exact match).
+pub fn remote_branch_exists(remote_url: &str, branch: &str) -> Result<bool, GitError> {
+    let ref_name = format!("refs/heads/{branch}");
+    let output = GitCommand::new(&["ls-remote", "--heads", remote_url, &ref_name]).output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Check for exact match
+    for line in stdout.lines() {
+        if line.contains(&ref_name) {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
+/// Add a new worktree
+///
+/// Executes `git worktree add` to create a new worktree.
+/// If `new_branch` is true, creates a new branch with `-b`.
+pub fn add_worktree(path: &Path, branch: &str, new_branch: bool) -> Result<(), GitError> {
+    let path_str = path.to_string_lossy();
+    let mut args = vec!["worktree", "add"];
+
+    if new_branch {
+        args.extend_from_slice(&["-b", branch, path_str.as_ref()]);
+    } else {
+        args.extend_from_slice(&[path_str.as_ref(), branch]);
     }
 
     GitCommand::new(&args).execute()?;

@@ -16,12 +16,15 @@ pub enum GrmError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("Directory already exists: {0}")]
-    AlreadyManaged(String),
+    #[error("Path already exists: {0}")]
+    AlreadyExists(String),
 
     #[error("No repositories found for URL: {url}\nSearched in: {searched_path}")]
     UnmanagedRepository { url: String, searched_path: String },
 
     #[error("Operation cancelled by user")]
     UserCancelled,
+
+    #[error("Not in a managed git repository")]
+    NotInManagedRepository,
 }
