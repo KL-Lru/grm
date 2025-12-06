@@ -80,6 +80,12 @@ enum WorktreeCommands {
         #[arg(help = "Path to file/directory to unshare")]
         path: String,
     },
+
+    #[command(about = "Isolate a shared file/directory (copy to local)")]
+    Isolate {
+        #[arg(help = "Path to shared file/directory")]
+        path: String,
+    },
 }
 
 fn execute(cli: &Cli) -> Result<(), GrmError> {
@@ -93,6 +99,7 @@ fn execute(cli: &Cli) -> Result<(), GrmError> {
             WorktreeCommands::Remove { branch } => verbs::worktree::remove::execute(branch),
             WorktreeCommands::Share { path } => verbs::worktree::share::execute(path),
             WorktreeCommands::Unshare { path } => verbs::worktree::unshare::execute(path),
+            WorktreeCommands::Isolate { path } => verbs::worktree::isolate::execute(path),
         },
         None => {
             Cli::command()
