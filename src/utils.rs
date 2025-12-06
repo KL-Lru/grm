@@ -1,2 +1,3 @@
-pub mod path;
 pub mod git;
+pub mod path;
+pub mod prompt;

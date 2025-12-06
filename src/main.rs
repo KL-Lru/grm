@@ -32,6 +32,15 @@ enum Commands {
         #[arg(long, help = "Show absolute paths instead of relative paths")]
         full_path: bool,
     },
+
+    #[command(about = "Remove repositories matching a URL")]
+    Remove {
+        #[arg(help = "Git repository URL")]
+        url: String,
+
+        #[arg(short, long, help = "Skip confirmation prompt")]
+        force: bool,
+    },
 }
 
 fn execute(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
@@ -41,6 +50,7 @@ fn execute(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             verbs::clone::execute(url, branch.as_deref())
         }
         Some(Commands::List { full_path }) => verbs::list::execute(*full_path),
+        Some(Commands::Remove { url, force }) => verbs::remove::execute(url, *force),
         None => {
             Cli::command()
                 .print_help()

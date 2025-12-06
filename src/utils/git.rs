@@ -4,6 +4,9 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum GitError {
+    #[error("Invalid git URL: {0}")]
+    InvalidUrl(String),
+
     #[error("Failed to execute git command: {0}")]
     Execution(String),
 
@@ -85,4 +88,137 @@ pub fn clone_repo(url: &str, dest: &Path, branch: Option<&str>) -> Result<(), Gi
     }
 
     Ok(())
+}
+
+/// Parsed repository information from a git URL
+#[derive(Debug)]
+pub struct RepoInfo {
+    pub host: String,
+    pub user: String,
+    pub repo: String,
+}
+
+/// Parse a git URL (HTTPS or SSH) into components
+///
+/// Supports:
+/// - `https://github.com/user/repo.git`
+/// - `https://github.com/user/repo`
+/// - `git@github.com:user/repo.git`
+/// - `ssh://git@github.com/user/repo.git`
+///
+/// # Arguments
+/// * `url` - Git repository URL to parse
+///
+/// # Returns
+/// * `Ok(RepoInfo)` - Parsed repository information
+/// * `Err(GitError::InvalidUrl)` - If URL format is not supported
+pub fn parse_git_url(url: &str) -> Result<RepoInfo, GitError> {
+    let url = url.trim();
+
+    // HTTPS format: https://host/user/repo(.git)?
+    if let Some(url_without_scheme) = url.strip_prefix("https://") {
+        let parts: Vec<&str> = url_without_scheme.splitn(2, '/').collect();
+        if parts.len() != 2 {
+            return Err(GitError::InvalidUrl(format!(
+                "Expected format: https://host/user/repo, got: {url}",
+            )));
+        }
+
+        let host = parts[0];
+        let path = parts[1];
+
+        let path_parts: Vec<&str> = path.split('/').collect();
+        if path_parts.len() < 2 {
+            return Err(GitError::InvalidUrl(format!(
+                "Expected format: https://host/user/repo, got: {url}",
+            )));
+        }
+
+        let user = path_parts[0];
+        let repo = path_parts[1].trim_end_matches(".git");
+
+        return Ok(RepoInfo {
+            host: host.to_string(),
+            user: user.to_string(),
+            repo: repo.to_string(),
+        });
+    }
+
+    // SSH format: git@host:user/repo(.git)?
+    if let Some(url_without_scheme) = url.strip_prefix("git@") {
+        let parts: Vec<&str> = url_without_scheme.splitn(2, ':').collect();
+        if parts.len() != 2 {
+            return Err(GitError::InvalidUrl(format!(
+                "Expected format: git@host:user/repo, got: {url}",
+            )));
+        }
+
+        let host = parts[0];
+        let path = parts[1];
+
+        let path_parts: Vec<&str> = path.split('/').collect();
+        if path_parts.len() < 2 {
+            return Err(GitError::InvalidUrl(format!(
+                "Expected format: git@host:user/repo, got: {url}",
+            )));
+        }
+
+        let user = path_parts[0];
+        let repo = path_parts[1].trim_end_matches(".git");
+
+        return Ok(RepoInfo {
+            host: host.to_string(),
+            user: user.to_string(),
+            repo: repo.to_string(),
+        });
+    }
+
+    // ssh:// format: ssh://git@host/user/repo(.git)?
+    if let Some(url_without_scheme) = url.strip_prefix("ssh://git@") {
+        let parts: Vec<&str> = url_without_scheme.splitn(2, '/').collect();
+        if parts.len() != 2 {
+            return Err(GitError::InvalidUrl(format!(
+                "Expected format: ssh://git@host/user/repo, got: {url}",
+            )));
+        }
+
+        let host = parts[0];
+        let path = parts[1];
+
+        let path_parts: Vec<&str> = path.split('/').collect();
+        if path_parts.len() < 2 {
+            return Err(GitError::InvalidUrl(format!(
+                "Expected format: ssh://git@host/user/repo, got: {url}",
+            )));
+        }
+
+        let user = path_parts[0];
+        let repo = path_parts[1].trim_end_matches(".git");
+
+        return Ok(RepoInfo {
+            host: host.to_string(),
+            user: user.to_string(),
+            repo: repo.to_string(),
+        });
+    }
+
+    Err(GitError::InvalidUrl(format!(
+        "Unsupported URL format. Supported: https://, git@, ssh://. Got: {url}",
+    )))
+}
+
+/// Check if a directory is a git repository
+///
+/// A directory is considered a git repository if it contains a `.git` directory or file.
+/// The `.git` can be either a directory (normal repository) or a file (submodule/worktree).
+///
+/// # Arguments
+/// * `path` - Path to check
+///
+/// # Returns
+/// * `true` if the path contains a `.git` directory or file
+/// * `false` otherwise
+pub fn is_git_repository(path: &Path) -> bool {
+    let git_path = path.join(".git");
+    git_path.exists() && (git_path.is_dir() || git_path.is_file())
 }
