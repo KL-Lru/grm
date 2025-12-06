@@ -115,91 +115,37 @@ pub struct RepoInfo {
 pub fn parse_git_url(url: &str) -> Result<RepoInfo, GitError> {
     let url = url.trim();
 
-    // HTTPS format: https://host/user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("https://") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, '/').collect();
-        if parts.len() != 2 {
-            return Err(GitError::InvalidUrl(format!(
-                "Expected format: https://host/user/repo, got: {url}",
-            )));
+    // (prefix, separator)
+    let formats = [("https://", "/"), ("ssh://git@", "/"), ("git@", ":")];
+
+    for (prefix, separator) in formats {
+        if let Some(url_without_scheme) = url.strip_prefix(prefix) {
+            let parts: Vec<&str> = url_without_scheme.splitn(2, separator).collect();
+            if parts.len() != 2 {
+                return Err(GitError::InvalidUrl(format!(
+                    "Expected format: {prefix}host{separator}user/repo, got: {url}",
+                )));
+            }
+
+            let host = parts[0];
+            let path = parts[1];
+
+            let path_parts: Vec<&str> = path.split('/').collect();
+            if path_parts.len() < 2 {
+                return Err(GitError::InvalidUrl(format!(
+                    "Expected format: {prefix}host{separator}user/repo, got: {url}",
+                )));
+            }
+
+            let user = path_parts[0];
+            let repo = path_parts[1].trim_end_matches(".git");
+
+            return Ok(RepoInfo {
+                host: host.to_string(),
+                user: user.to_string(),
+                repo: repo.to_string(),
+            });
         }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(GitError::InvalidUrl(format!(
-                "Expected format: https://host/user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
-    }
-
-    // SSH format: git@host:user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("git@") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, ':').collect();
-        if parts.len() != 2 {
-            return Err(GitError::InvalidUrl(format!(
-                "Expected format: git@host:user/repo, got: {url}",
-            )));
-        }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(GitError::InvalidUrl(format!(
-                "Expected format: git@host:user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
-    }
-
-    // ssh:// format: ssh://git@host/user/repo(.git)?
-    if let Some(url_without_scheme) = url.strip_prefix("ssh://git@") {
-        let parts: Vec<&str> = url_without_scheme.splitn(2, '/').collect();
-        if parts.len() != 2 {
-            return Err(GitError::InvalidUrl(format!(
-                "Expected format: ssh://git@host/user/repo, got: {url}",
-            )));
-        }
-
-        let host = parts[0];
-        let path = parts[1];
-
-        let path_parts: Vec<&str> = path.split('/').collect();
-        if path_parts.len() < 2 {
-            return Err(GitError::InvalidUrl(format!(
-                "Expected format: ssh://git@host/user/repo, got: {url}",
-            )));
-        }
-
-        let user = path_parts[0];
-        let repo = path_parts[1].trim_end_matches(".git");
-
-        return Ok(RepoInfo {
-            host: host.to_string(),
-            user: user.to_string(),
-            repo: repo.to_string(),
-        });
     }
 
     Err(GitError::InvalidUrl(format!(
@@ -221,4 +167,50 @@ pub fn parse_git_url(url: &str) -> Result<RepoInfo, GitError> {
 pub fn is_git_repository(path: &Path) -> bool {
     let git_path = path.join(".git");
     git_path.exists() && (git_path.is_dir() || git_path.is_file())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_git_url_https() {
+        let info = parse_git_url("https://github.com/user/repo.git").unwrap();
+        assert_eq!(info.host, "github.com");
+        assert_eq!(info.user, "user");
+        assert_eq!(info.repo, "repo");
+
+        let info = parse_git_url("https://github.com/user/repo").unwrap();
+        assert_eq!(info.host, "github.com");
+        assert_eq!(info.user, "user");
+        assert_eq!(info.repo, "repo");
+    }
+
+    #[test]
+    fn test_parse_git_url_ssh() {
+        let info = parse_git_url("git@github.com:user/repo.git").unwrap();
+        assert_eq!(info.host, "github.com");
+        assert_eq!(info.user, "user");
+        assert_eq!(info.repo, "repo");
+
+        let info = parse_git_url("git@gitlab.com:user/repo").unwrap();
+        assert_eq!(info.host, "gitlab.com");
+        assert_eq!(info.user, "user");
+        assert_eq!(info.repo, "repo");
+    }
+
+    #[test]
+    fn test_parse_git_url_ssh_protocol() {
+        let info = parse_git_url("ssh://git@github.com/user/repo.git").unwrap();
+        assert_eq!(info.host, "github.com");
+        assert_eq!(info.user, "user");
+        assert_eq!(info.repo, "repo");
+    }
+
+    #[test]
+    fn test_parse_git_url_invalid() {
+        assert!(parse_git_url("invalid").is_err());
+        assert!(parse_git_url("https://github.com/user").is_err()); // Missing repo
+        assert!(parse_git_url("git@github.com/user/repo.git").is_err()); // Wrong separator for short ssh
+    }
 }
