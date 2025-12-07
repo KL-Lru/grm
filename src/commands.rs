@@ -1,6 +1,13 @@
 use clap::{CommandFactory, Parser, Subcommand};
 
-use crate::{errors::GrmError, verbs};
+use crate::configs::Config;
+use crate::errors::GrmError;
+use crate::container::AppContainer;
+use crate::usecases::{
+    CloneRepositoryUseCase, IsolateFilesUseCase, ListRepositoriesUseCase, RemoveRepositoryUseCase,
+    RemoveWorktreeUseCase, ShareFilesUseCase, ShowRootUseCase, SplitWorktreeUseCase,
+    UnshareFilesUseCase,
+};
 
 #[derive(Debug, Parser)]
 #[command(name = "grm", about = "Git Repository Manager", long_about = None)]
@@ -12,18 +19,79 @@ pub struct Cli {
 impl Cli {
     pub fn execute() -> Result<(), GrmError> {
         let args = Cli::parse();
+        let container = AppContainer::new_production();
+        let config = Config::load()?;
 
         match &args.command {
-            Some(Commands::Root) => verbs::root::execute(),
-            Some(Commands::Clone { url, branch }) => verbs::clone::execute(url, branch.as_deref()),
-            Some(Commands::List { full_path }) => verbs::list::execute(*full_path),
-            Some(Commands::Remove { url, force }) => verbs::remove::execute(url, *force),
+            Some(Commands::Root) => {
+                let usecase = ShowRootUseCase::new(container.ui.clone());
+                usecase.execute(&config);
+                Ok(())
+            }
+            Some(Commands::Clone { url, branch }) => {
+                let usecase = CloneRepositoryUseCase::new(
+                    container.git.clone(),
+                    container.fs.clone(),
+                    container.ui.clone(),
+                );
+                usecase.execute(&config, url, branch.as_deref())?;
+                Ok(())
+            }
+            Some(Commands::List { full_path }) => {
+                let usecase =
+                    ListRepositoriesUseCase::new(container.fs.clone(), container.ui.clone());
+                usecase.execute(&config, *full_path)?;
+                Ok(())
+            }
+            Some(Commands::Remove { url, force }) => {
+                let usecase =
+                    RemoveRepositoryUseCase::new(container.fs.clone(), container.ui.clone());
+                usecase.execute(&config, url, *force)?;
+                Ok(())
+            }
             Some(Commands::Worktree { command }) => match command {
-                WorktreeCommands::Split { branch } => verbs::worktree::split::execute(branch),
-                WorktreeCommands::Remove { branch } => verbs::worktree::remove::execute(branch),
-                WorktreeCommands::Share { path } => verbs::worktree::share::execute(path),
-                WorktreeCommands::Unshare { path } => verbs::worktree::unshare::execute(path),
-                WorktreeCommands::Isolate { path } => verbs::worktree::isolate::execute(path),
+                WorktreeCommands::Split { branch } => {
+                    let usecase = SplitWorktreeUseCase::new(
+                        container.git.clone(),
+                        container.fs.clone(),
+                        container.ui.clone(),
+                    );
+                    usecase.execute(&config, branch)?;
+                    Ok(())
+                }
+                WorktreeCommands::Remove { branch } => {
+                    let usecase =
+                        RemoveWorktreeUseCase::new(container.git.clone(), container.ui.clone());
+                    usecase.execute(&config, branch)?;
+                    Ok(())
+                }
+                WorktreeCommands::Share { path } => {
+                    let usecase = ShareFilesUseCase::new(
+                        container.git.clone(),
+                        container.fs.clone(),
+                        container.ui.clone(),
+                    );
+                    usecase.execute(&config, path)?;
+                    Ok(())
+                }
+                WorktreeCommands::Unshare { path } => {
+                    let usecase = UnshareFilesUseCase::new(
+                        container.git.clone(),
+                        container.fs.clone(),
+                        container.ui.clone(),
+                    );
+                    usecase.execute(&config, path)?;
+                    Ok(())
+                }
+                WorktreeCommands::Isolate { path } => {
+                    let usecase = IsolateFilesUseCase::new(
+                        container.git.clone(),
+                        container.fs.clone(),
+                        container.ui.clone(),
+                    );
+                    usecase.execute(&config, path)?;
+                    Ok(())
+                }
             },
             None => {
                 Cli::command()

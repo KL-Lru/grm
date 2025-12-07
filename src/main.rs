@@ -1,9 +1,10 @@
+mod adapters;
 mod commands;
 mod configs;
-mod discovery;
+mod container;
+mod core;
 mod errors;
-mod utils;
-mod verbs;
+mod usecases;
 
 use crate::commands::Cli;
 
