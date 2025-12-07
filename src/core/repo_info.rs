@@ -6,6 +6,7 @@ pub struct RepoInfo {
     pub host: String,
     pub user: String,
     pub repo: String,
+    pub branch: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -15,8 +16,8 @@ pub enum RepositoryError {
 }
 
 impl RepoInfo {
-    pub fn new(host: String, user: String, repo: String) -> Self {
-        Self { host, user, repo }
+    pub fn new(host: String, user: String, repo: String, branch: Option<String>) -> Self {
+        Self { host, user, repo, branch }
     }
 
     /// Parse a git repository URL into ``RepoInfo``
@@ -56,6 +57,7 @@ impl RepoInfo {
                     host.to_string(),
                     user.to_string(),
                     repo.to_string(),
+                    None,
                 ));
             }
         }
@@ -93,17 +95,27 @@ impl RepoInfo {
         let host = components[0].to_string();
         let user = components[1].to_string();
         let repo_with_branch = components[2];
-        let repo = repo_with_branch
-            .split('+')
-            .next()
-            .ok_or_else(|| {
-                RepositoryError::Invalid(format!(
-                    "Repository component {repo_with_branch} is not valid",
-                ))
-            })?
-            .to_string();
 
-        Ok(RepoInfo::new(host, user, repo))
+        if let Some(plus_pos) = repo_with_branch.find('+') {
+            let repo = repo_with_branch[..plus_pos].to_string();
+            let branch_first_part = &repo_with_branch[plus_pos + 1..];
+            let remaining_components = &components[3..];
+
+            let branch = if !remaining_components.is_empty() {
+                let mut branch_parts = vec![branch_first_part];
+                branch_parts.extend(remaining_components);
+                Some(branch_parts.join("/"))
+            } else if !branch_first_part.is_empty() {
+                Some(branch_first_part.to_string())
+            } else {
+                None
+            };
+
+            Ok(RepoInfo::new(host, user, repo, branch))
+        } else {
+            let repo = repo_with_branch.to_string();
+            Ok(RepoInfo::new(host, user, repo, None))
+        }
     }
 
     /// Builds the repository path
@@ -183,11 +195,45 @@ mod tests {
     }
 
     #[test]
+    fn test_from_path_with_branch() {
+        let root = PathBuf::from("/home/user/grm");
+        let path = PathBuf::from("/home/user/grm/github.com/test/repo+main");
+        let info = RepoInfo::from_path(&root, &path).unwrap();
+        assert_eq!(info.host, "github.com");
+        assert_eq!(info.user, "test");
+        assert_eq!(info.repo, "repo");
+        assert_eq!(info.branch, Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_from_path_with_hierarchical_branch() {
+        let root = PathBuf::from("/home/user/grm");
+        let path = PathBuf::from("/home/user/grm/github.com/test/repo+feature/foobar");
+        let info = RepoInfo::from_path(&root, &path).unwrap();
+        assert_eq!(info.host, "github.com");
+        assert_eq!(info.user, "test");
+        assert_eq!(info.repo, "repo");
+        assert_eq!(info.branch, Some("feature/foobar".to_string()));
+    }
+
+    #[test]
+    fn test_from_path_without_branch() {
+        let root = PathBuf::from("/home/user/grm");
+        let path = PathBuf::from("/home/user/grm/github.com/test/repo");
+        let info = RepoInfo::from_path(&root, &path).unwrap();
+        assert_eq!(info.host, "github.com");
+        assert_eq!(info.user, "test");
+        assert_eq!(info.repo, "repo");
+        assert_eq!(info.branch, None);
+    }
+
+    #[test]
     fn test_build_repo_path() {
         let info = RepoInfo::new(
             "github.com".to_string(),
             "test".to_string(),
             "repo".to_string(),
+            None,
         );
         let root = PathBuf::from("/home/user/grm");
         let path = info.build_repo_path(&root, "main");
@@ -203,6 +249,7 @@ mod tests {
             "github.com".to_string(),
             "test".to_string(),
             "repo".to_string(),
+            None,
         );
         let root = PathBuf::from("/home/user/grm");
         let path = info.build_shared_path(&root, Path::new(".env"));
