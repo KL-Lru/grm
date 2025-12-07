@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Component, Path, PathBuf, absolute};
 
-use crate::adapters::ports::{FileSystem, FileSystemError};
+use crate::core::ports::{FileSystem, FileSystemError};
 
 #[derive(Debug)]
 pub struct UnixFs;

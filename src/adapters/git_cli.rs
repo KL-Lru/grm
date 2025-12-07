@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use crate::adapters::ports::{GitError, GitRepository};
+use crate::core::ports::{GitError, GitRepository};
 
 pub struct GitCli;
 

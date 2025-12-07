@@ -1,6 +1,6 @@
 use std::io::{self, BufRead, Write};
 
-use crate::adapters::ports::{InteractionError, UserInteraction};
+use crate::core::ports::{InteractionError, UserInteraction};
 
 pub struct TerminalInteraction;
 
