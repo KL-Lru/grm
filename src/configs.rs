@@ -19,7 +19,10 @@ mod grmrc_provider;
 pub(crate) mod provider; // Available within crate for testing
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use thiserror::Error;
+
+use crate::core::ports::FileSystemError;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -35,8 +38,8 @@ pub enum ConfigError {
     #[error("Environment variable error: {0}")]
     Env(String),
 
-    #[error("Invalid path: {0}")]
-    Path(String),
+    #[error("File system error: {0}")]
+    FileSystem(#[from] FileSystemError),
 }
 
 /// Grm configuration manager
@@ -55,14 +58,17 @@ impl Config {
     /// 3. ~/.gitconfig ([grm] section)
     /// 4. Default: ~/grm
     pub fn load() -> Result<Self, ConfigError> {
+        use crate::adapters::unix_fs::UnixFs;
         use provider::ConfigProvider;
+
+        let fs = Arc::new(UnixFs::new());
 
         // Build the provider chain in priority order
         let providers: Vec<Box<dyn ConfigProvider>> = vec![
-            Box::new(env_provider::EnvProvider),
-            Box::new(grmrc_provider::GrmrcProvider),
-            Box::new(gitconfig_provider::GitConfigProvider),
-            Box::new(default_provider::DefaultProvider),
+            Box::new(env_provider::EnvProvider::new(fs.clone())),
+            Box::new(grmrc_provider::GrmrcProvider::new(fs.clone())),
+            Box::new(gitconfig_provider::GitConfigProvider::new(fs.clone())),
+            Box::new(default_provider::DefaultProvider::new(fs.clone())),
         ];
 
         // Try each provider in order until one returns a value

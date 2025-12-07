@@ -1,9 +1,10 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use serde::Deserialize;
 
+use crate::core::ports::FileSystem;
 use crate::configs::{ConfigError, provider::ConfigProvider};
-use crate::utils::path;
 
 /// TOML structure for .grmrc file
 #[derive(Debug, Deserialize)]
@@ -18,11 +19,19 @@ struct GrmrcFile {
 /// ```toml
 /// root = "/path/to/root"
 /// ```
-pub struct GrmrcProvider;
+pub struct GrmrcProvider {
+    fs: Arc<dyn FileSystem>,
+}
+
+impl GrmrcProvider {
+    pub fn new(fs: Arc<dyn FileSystem>) -> Self {
+        Self { fs }
+    }
+}
 
 impl ConfigProvider for GrmrcProvider {
     fn load_root(&self) -> Result<Option<PathBuf>, ConfigError> {
-        let home = path::require_home_dir()?;
+        let home = self.fs.home_dir()?;
 
         let grmrc_path = home.join(".grmrc");
 
@@ -33,12 +42,13 @@ impl ConfigProvider for GrmrcProvider {
             Err(e) => return Err(ConfigError::Io(format!("Failed to read .grmrc: {e}"))),
         };
 
-        // Parse TOML - any parse error should stop immediately
+        // Parse TOML
         let parsed: GrmrcFile = toml::from_str(&content)
             .map_err(|e| ConfigError::Parse(format!("Failed to parse .grmrc: {e}")))?;
 
         // Normalize the path
-        let normalized = path::normalize_path(&parsed.root)?;
+        let path = std::path::Path::new(&parsed.root);
+        let normalized = self.fs.normalize(path, &home)?;
 
         Ok(Some(normalized))
     }

@@ -1,7 +1,8 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use crate::core::ports::FileSystem;
 use crate::configs::{ConfigError, provider::ConfigProvider};
-use crate::utils::path;
 
 const GIT_CONFIG_ROOT_KEY: &str = "grm.root";
 
@@ -15,7 +16,15 @@ const GIT_CONFIG_ROOT_KEY: &str = "grm.root";
 /// [grm]
 ///     root = /path/to/root
 /// ```
-pub struct GitConfigProvider;
+pub struct GitConfigProvider {
+    fs: Arc<dyn FileSystem>,
+}
+
+impl GitConfigProvider {
+    pub fn new(fs: Arc<dyn FileSystem>) -> Self {
+        Self { fs }
+    }
+}
 
 impl ConfigProvider for GitConfigProvider {
     fn load_root(&self) -> Result<Option<PathBuf>, ConfigError> {
@@ -44,7 +53,9 @@ impl ConfigProvider for GitConfigProvider {
         };
 
         // Normalize the path
-        let normalized = path::normalize_path(&root_str)?;
+        let home = self.fs.home_dir()?;
+        let path = std::path::Path::new(&root_str);
+        let normalized = self.fs.normalize(path, &home)?;
 
         Ok(Some(normalized))
     }
