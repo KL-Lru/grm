@@ -30,6 +30,10 @@ impl FileSystem for UnixFs {
         }
     }
 
+    fn is_dir(&self, path: &Path) -> bool {
+        path.is_dir()
+    }
+
     fn is_git_repository(&self, path: &Path) -> bool {
         let git_path = path.join(".git");
         git_path.exists() && (git_path.is_dir() || git_path.is_file())
@@ -69,7 +73,7 @@ impl FileSystem for UnixFs {
     }
 
     fn copy(&self, from: &Path, to: &Path) -> Result<(), FileSystemError> {
-        if from.is_dir() {
+        if self.is_dir(from) {
             self.create_dir(to)?;
             for entry in self.read_dir(from)? {
                 let file_name = entry
@@ -77,7 +81,7 @@ impl FileSystem for UnixFs {
                     .ok_or_else(|| FileSystemError::PathError("Invalid filename".into()))?;
 
                 let dest_path = to.join(file_name);
-                if entry.is_dir() {
+                if self.is_dir(&entry) {
                     self.copy(&entry, &dest_path)?;
                 } else {
                     fs::copy(&entry, &dest_path)?;
@@ -95,7 +99,7 @@ impl FileSystem for UnixFs {
     }
 
     fn remove(&self, path: &Path) -> Result<(), FileSystemError> {
-        if path.is_dir() && !self.is_symlink(path) {
+        if self.is_dir(path) && !self.is_symlink(path) {
             fs::remove_dir_all(path)?;
         } else {
             fs::remove_file(path)?;

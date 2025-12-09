@@ -30,6 +30,16 @@ pub trait FileSystem: Send + Sync {
     /// * `false` if the path is not a symbolic link or does not exist
     fn is_symlink(&self, path: &Path) -> bool;
 
+    /// Check if a path is a directory
+    ///
+    /// # Arguments
+    /// * `path` - The path to check
+    ///
+    /// # Returns
+    /// * `true` if the path is a directory
+    /// * `false` if the path is not a directory or does not exist
+    fn is_dir(&self, path: &Path) -> bool;
+
     /// Check if a path is a git repository
     ///
     /// # Arguments

@@ -85,7 +85,7 @@ impl SharedResource {
         let mut queue = vec![shared_root.clone()];
         while let Some(current_dir) = queue.pop() {
             for entry in self.fs.read_dir(&current_dir)? {
-                if entry.is_dir() {
+                if self.fs.is_dir(&entry) {
                     self.fs.create_dir(&repo_root.join(&entry))?;
                     queue.push(entry);
                 } else {

@@ -27,7 +27,7 @@ impl RepoScanner {
             Ok(entries) => {
                 let dirs = entries
                     .into_iter()
-                    .filter(|p| !self.fs.is_symlink(p) && p.is_dir())
+                    .filter(|p| !self.fs.is_symlink(p) && self.fs.is_dir(p))
                     .collect::<Vec<_>>();
 
                 for dir in dirs {
