@@ -31,7 +31,11 @@ impl IsolateFilesUseCase {
             .map_err(|_| GrmError::NotInManagedRepository)?;
         let repo_info = RepoInfo::from_path(config.root(), &repo_root)?;
 
-        let resource = SharedResource::new(repo_info.clone(), Arc::clone(&self.fs));
+        let resource = SharedResource::new(
+            repo_info.clone(),
+            Arc::clone(&self.fs),
+            config.root().to_path_buf(),
+        );
 
         resource.isolate(&repo_root, &relative_path)?;
 

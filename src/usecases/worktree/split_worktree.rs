@@ -49,7 +49,8 @@ impl SplitWorktreeUseCase {
 
         self.ui.print(&dest_path.display().to_string());
 
-        let shared_resource = SharedResource::new(repo_info, Arc::clone(&self.fs));
+        let shared_resource =
+            SharedResource::new(repo_info, Arc::clone(&self.fs), config.root().to_path_buf());
         shared_resource.mount(&repo_root)?;
 
         Ok(())

@@ -12,15 +12,17 @@ pub struct SharedResource {
     repo_info: RepoInfo,
     fs: Arc<dyn FileSystem>,
     scanner: RepoScanner,
+    root: PathBuf,
 }
 
 impl SharedResource {
-    pub fn new(repo_info: RepoInfo, fs: Arc<dyn FileSystem>) -> Self {
+    pub fn new(repo_info: RepoInfo, fs: Arc<dyn FileSystem>, root: PathBuf) -> Self {
         let scanner = RepoScanner::new(Arc::clone(&fs));
         Self {
             repo_info,
             fs,
             scanner,
+            root,
         }
     }
 
@@ -46,13 +48,13 @@ impl SharedResource {
 
         let shared_path = self
             .repo_info
-            .build_shared_path(repo_root, repo_relative_path);
+            .build_shared_path(&self.root, repo_relative_path);
         if !self.fs.exists(&shared_path) {
             return Ok(Vec::new());
         }
 
         let mut conflicts = Vec::new();
-        let worktrees = self.scanner.scan_worktrees(repo_root, &self.repo_info)?;
+        let worktrees = self.scanner.scan_worktrees(&self.root, &self.repo_info)?;
         for worktree in &worktrees {
             let target_in_worktree = worktree.join(repo_relative_path);
             if file == target_in_worktree {
@@ -71,7 +73,7 @@ impl SharedResource {
     /// # Arguments
     /// * `repo_root` - The root directory for managed repositories
     pub fn mount(&self, repo_root: &Path) -> Result<(), GrmError> {
-        let shared_root = self.repo_info.build_shared_path(repo_root, Path::new(""));
+        let shared_root = self.repo_info.build_shared_path(&self.root, Path::new(""));
 
         if !self.fs.exists(&shared_root) {
             return Err(GrmError::NotFound(format!(
@@ -121,7 +123,7 @@ impl SharedResource {
             .map_err(|e| GrmError::NotFound(format!("{e}")))?;
         let shared_path = self
             .repo_info
-            .build_shared_path(repo_root, repo_relative_path);
+            .build_shared_path(&self.root, repo_relative_path);
 
         if !self.fs.exists(&file) {
             return Err(GrmError::NotFound(format!(
@@ -145,7 +147,7 @@ impl SharedResource {
         }
 
         self.fs.rename(&file, &shared_path)?;
-        let worktrees = self.scanner.scan_worktrees(repo_root, &self.repo_info)?;
+        let worktrees = self.scanner.scan_worktrees(&self.root, &self.repo_info)?;
 
         // Create symlinks in all worktrees
         for worktree in &worktrees {
@@ -180,7 +182,7 @@ impl SharedResource {
 
         let mut removed_count = 0;
 
-        let worktrees = self.scanner.scan_worktrees(repo_root, &self.repo_info)?;
+        let worktrees = self.scanner.scan_worktrees(&self.root, &self.repo_info)?;
         for worktree in &worktrees {
             let target_in_worktree = worktree.join(repo_relative_path);
 
@@ -216,7 +218,7 @@ impl SharedResource {
 
         let shared_path = self
             .repo_info
-            .build_shared_path(repo_root, repo_relative_path);
+            .build_shared_path(&self.root, repo_relative_path);
         let absolute_target_path = repo_root.join(repo_relative_path);
 
         if !self.fs.exists(&absolute_target_path) {

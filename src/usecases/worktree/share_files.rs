@@ -39,7 +39,8 @@ impl ShareFilesUseCase {
             )));
         }
 
-        let resource = SharedResource::new(repo_info, Arc::clone(&self.fs));
+        let resource =
+            SharedResource::new(repo_info, Arc::clone(&self.fs), config.root().to_path_buf());
 
         let conflicts = resource.conflicts(&repo_root, &relative_path)?;
         if !conflicts.is_empty() {

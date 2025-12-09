@@ -53,10 +53,14 @@ impl RepoScanner {
         let mut repos = Vec::new();
         let all_repos = self.scan_repositories(root)?;
 
-        let repo_prefix = repo_info.build_repo_path(root, "");
+        // root/host/user/repo+
+        let repo_prefix = repo_info
+            .build_repo_path(root, "")
+            .to_string_lossy()
+            .to_string();
 
         for repo_path in all_repos {
-            if repo_path.starts_with(&repo_prefix) {
+            if repo_path.to_string_lossy().starts_with(&repo_prefix) {
                 repos.push(repo_path);
             }
         }
