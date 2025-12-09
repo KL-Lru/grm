@@ -38,6 +38,4 @@ pub trait GitRepository: Send + Sync {
     ) -> Result<(), GitError>;
 
     fn remove_worktree(&self, worktree_path: &Path) -> Result<(), GitError>;
-
-    fn list_worktrees(&self) -> Result<Vec<PathBuf>, GitError>;
 }

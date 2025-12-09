@@ -40,6 +40,12 @@ impl FileSystem for UnixFs {
         Ok(dir)
     }
 
+    fn home_dir(&self) -> Result<PathBuf, FileSystemError> {
+        dirs::home_dir()
+            .and_then(|path| absolute(&path).ok())
+            .ok_or_else(|| FileSystemError::PathError("Home directory not found".into()))
+    }
+
     fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>, FileSystemError> {
         let entries = fs::read_dir(path)?;
         let mut paths = Vec::new();
@@ -57,13 +63,29 @@ impl FileSystem for UnixFs {
         Ok(())
     }
 
-    fn remove_dir(&self, path: &Path) -> Result<(), FileSystemError> {
-        fs::remove_dir_all(path)?;
+    fn create_symlink(&self, target: &Path, link: &Path) -> Result<(), FileSystemError> {
+        std::os::unix::fs::symlink(target, link)?;
         Ok(())
     }
 
-    fn remove_file(&self, path: &Path) -> Result<(), FileSystemError> {
-        fs::remove_file(path)?;
+    fn copy(&self, from: &Path, to: &Path) -> Result<(), FileSystemError> {
+        if from.is_dir() {
+            self.create_dir(to)?;
+            for entry in self.read_dir(from)? {
+                let file_name = entry
+                    .file_name()
+                    .ok_or_else(|| FileSystemError::PathError("Invalid filename".into()))?;
+
+                let dest_path = to.join(file_name);
+                if entry.is_dir() {
+                    self.copy(&entry, &dest_path)?;
+                } else {
+                    fs::copy(&entry, &dest_path)?;
+                }
+            }
+        } else {
+            fs::copy(from, to)?;
+        }
         Ok(())
     }
 
@@ -72,15 +94,14 @@ impl FileSystem for UnixFs {
         Ok(())
     }
 
-    fn create_symlink(&self, target: &Path, link: &Path) -> Result<(), FileSystemError> {
-        std::os::unix::fs::symlink(target, link)?;
-        Ok(())
-    }
+    fn remove(&self, path: &Path) -> Result<(), FileSystemError> {
+        if path.is_dir() && !self.is_symlink(path) {
+            fs::remove_dir_all(path)?;
+        } else {
+            fs::remove_file(path)?;
+        }
 
-    fn home_dir(&self) -> Result<PathBuf, FileSystemError> {
-        dirs::home_dir()
-            .and_then(|path| absolute(&path).ok())
-            .ok_or_else(|| FileSystemError::PathError("Home directory not found".into()))
+        Ok(())
     }
 
     fn normalize(&self, path: &Path, base: &Path) -> Result<PathBuf, FileSystemError> {
@@ -215,7 +236,7 @@ mod tests {
         adapter.create_dir(&dir_to_remove).unwrap();
         assert!(adapter.exists(&dir_to_remove));
 
-        adapter.remove_dir(&dir_to_remove).unwrap();
+        adapter.remove(&dir_to_remove).unwrap();
         assert!(!adapter.exists(&dir_to_remove));
     }
 
@@ -229,7 +250,7 @@ mod tests {
         fs::File::create(dir_to_remove.join("file.txt")).unwrap();
 
         let parent = temp_dir.path().join("dir");
-        adapter.remove_dir(&parent).unwrap();
+        adapter.remove(&parent).unwrap();
         assert!(!adapter.exists(&parent));
     }
 
@@ -242,7 +263,7 @@ mod tests {
         fs::File::create(&file_path).unwrap();
         assert!(adapter.exists(&file_path));
 
-        adapter.remove_file(&file_path).unwrap();
+        adapter.remove(&file_path).unwrap();
         assert!(!adapter.exists(&file_path));
     }
 

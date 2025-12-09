@@ -74,25 +74,27 @@ pub trait FileSystem: Send + Sync {
     /// * `Err` - If the directory cannot be created
     fn create_dir(&self, path: &Path) -> Result<(), FileSystemError>;
 
-    /// Remove a directory and all its contents recursively
+    /// Create a symbolic link
     ///
     /// # Arguments
-    /// * `path` - The directory path to remove
+    /// * `target` - The target path the symlink points to
+    /// * `link` - The path where the symlink will be created
     ///
     /// # Returns
-    /// * `Ok(())` - Directory removed successfully
-    /// * `Err` - If the directory cannot be removed
-    fn remove_dir(&self, path: &Path) -> Result<(), FileSystemError>;
+    /// * `Ok(())` - Symlink created successfully
+    /// * `Err` - If the symlink cannot be created
+    fn create_symlink(&self, target: &Path, link: &Path) -> Result<(), FileSystemError>;
 
-    /// Remove a file
+    /// Copy a file or directory
     ///
     /// # Arguments
-    /// * `path` - The file path to remove
+    /// * `from` - The source path
+    /// * `to` - The destination path
     ///
     /// # Returns
-    /// * `Ok(())` - File removed successfully
-    /// * `Err` - If the file cannot be removed
-    fn remove_file(&self, path: &Path) -> Result<(), FileSystemError>;
+    /// * `Ok(())` - Copied successfully
+    /// * `Err` - If the copy operation fails
+    fn copy(&self, from: &Path, to: &Path) -> Result<(), FileSystemError>;
 
     /// Rename or move a file or directory
     ///
@@ -105,16 +107,15 @@ pub trait FileSystem: Send + Sync {
     /// * `Err` - If the operation fails
     fn rename(&self, from: &Path, to: &Path) -> Result<(), FileSystemError>;
 
-    /// Create a symbolic link
+    /// Remove a directory and all its contents recursively
     ///
     /// # Arguments
-    /// * `target` - The target path the symlink points to
-    /// * `link` - The path where the symlink will be created
+    /// * `path` - The directory or file path to remove
     ///
     /// # Returns
-    /// * `Ok(())` - Symlink created successfully
-    /// * `Err` - If the symlink cannot be created
-    fn create_symlink(&self, target: &Path, link: &Path) -> Result<(), FileSystemError>;
+    /// * `Ok(())` - removed successfully
+    /// * `Err` - If the directory / file cannot be removed
+    fn remove(&self, path: &Path) -> Result<(), FileSystemError>;
 
     /// Normalize a path to an absolute ``PathBuf``
     ///

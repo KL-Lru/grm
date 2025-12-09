@@ -45,7 +45,7 @@ impl RepoScanner {
         }
     }
 
-    pub fn find_repositories(
+    pub fn scan_worktrees(
         &self,
         root: &Path,
         repo_info: &RepoInfo,

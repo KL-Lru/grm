@@ -21,7 +21,7 @@ impl RemoveRepositoryUseCase {
         let repo_info = RepoInfo::from_url(url)?;
         let scanner = RepoScanner::new(Arc::clone(&self.fs));
 
-        let matching_repos = scanner.find_repositories(root, &repo_info)?;
+        let matching_repos = scanner.scan_worktrees(root, &repo_info)?;
 
         if matching_repos.is_empty() {
             let searched_path = root.join(&repo_info.host).join(&repo_info.user);
@@ -71,7 +71,7 @@ impl RemoveRepositoryUseCase {
                 continue;
             }
 
-            self.fs.remove_dir(repo)?;
+            self.fs.remove(repo)?;
             self.ui.print(&format!("Removed: {}", repo.display()));
         }
         Ok(())

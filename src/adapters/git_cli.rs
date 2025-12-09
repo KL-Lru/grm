@@ -172,19 +172,6 @@ impl GitRepository for GitCli {
         let worktree_path_str = worktree_path.to_string_lossy();
         Self::run_command_inherit(&["worktree", "remove", worktree_path_str.as_ref()])
     }
-
-    fn list_worktrees(&self) -> Result<Vec<PathBuf>, GitError> {
-        let output = Self::run_command(&["worktree", "list", "--porcelain"])?;
-
-        let mut worktrees = Vec::new();
-        for line in output.lines() {
-            if let Some(path) = line.strip_prefix("worktree ") {
-                worktrees.push(PathBuf::from(path));
-            }
-        }
-
-        Ok(worktrees)
-    }
 }
 
 #[cfg(test)]
