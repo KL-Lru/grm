@@ -10,12 +10,10 @@ pub struct AppContainer {
 }
 
 impl AppContainer {
-    pub fn new_production() -> Self {
-        let fs = Arc::new(UnixFs::new());
-
+    pub fn new() -> Self {
         Self {
             git: Arc::new(GitCli::new()),
-            fs: fs.clone(),
+            fs: Arc::new(UnixFs::new()),
             ui: Arc::new(TerminalInteraction::new()),
         }
     }

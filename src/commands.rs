@@ -19,7 +19,7 @@ pub struct Cli {
 impl Cli {
     pub fn execute() -> Result<(), GrmError> {
         let args = Cli::parse();
-        let container = AppContainer::new_production();
+        let container = AppContainer::new();
         let config = Config::load()?;
 
         match &args.command {
