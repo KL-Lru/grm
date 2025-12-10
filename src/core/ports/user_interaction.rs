@@ -12,7 +12,7 @@ pub enum InteractionError {
 ///
 /// This trait abstracts user interaction in CLI applications, allowing for
 /// different implementations (e.g., terminal, mock for testing).
-pub trait UserInteraction: Send + Sync {
+pub trait UserInteraction {
     /// Prompts the user for confirmation
     ///
     /// # Arguments

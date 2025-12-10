@@ -12,7 +12,7 @@ pub enum GitError {
     Parse(String),
 }
 
-pub trait GitRepository: Send + Sync {
+pub trait GitRepository {
     fn get_default_branch(&self, url: &str) -> Result<String, GitError>;
 
     fn get_repository_root(&self) -> Result<PathBuf, GitError>;

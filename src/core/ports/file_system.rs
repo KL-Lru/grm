@@ -9,7 +9,7 @@ pub enum FileSystemError {
     PathError(String),
 }
 
-pub trait FileSystem: Send + Sync {
+pub trait FileSystem {
     /// Check if a path exists
     ///
     /// # Arguments
