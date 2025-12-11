@@ -77,3 +77,157 @@ impl RemoveRepositoryUseCase {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapters::test_helpers::{MockFileSystem, MockUserInteraction};
+
+    #[test]
+    fn test_remove_repository_with_confirmation() {
+        // Arrange
+        let mock_fs = Arc::new(MockFileSystem::new());
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo("/test_root/github.com/user/repo+main");
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+        mock_ui.set_confirm(true);
+
+        let usecase = RemoveRepositoryUseCase::new(mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "https://github.com/user/repo", false);
+
+        // Assert
+        assert!(result.is_ok());
+        assert!(!mock_fs.exists(PathBuf::from("/test_root/github.com/user/repo+main").as_ref()));
+        let messages = mock_ui.get_printed_messages();
+        assert!(
+            messages
+                .iter()
+                .any(|m| m.contains("Successfully removed 1 repository"))
+        );
+    }
+
+    #[test]
+    fn test_remove_repository_force() {
+        // Arrange
+        let mock_fs = Arc::new(MockFileSystem::new());
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo("/test_root/github.com/user/repo+main");
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let usecase = RemoveRepositoryUseCase::new(mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "https://github.com/user/repo", true);
+
+        // Assert
+        assert!(result.is_ok());
+        assert!(!mock_fs.exists(PathBuf::from("/test_root/github.com/user/repo+main").as_ref()));
+        let messages = mock_ui.get_printed_messages();
+        assert!(
+            !messages
+                .iter()
+                .any(|m| m.contains("The following repositories will be deleted"))
+        );
+    }
+
+    #[test]
+    fn test_remove_repository_user_cancelled() {
+        // Arrange
+        let mock_fs = Arc::new(MockFileSystem::new());
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo("/test_root/github.com/user/repo+main");
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+        mock_ui.set_confirm(false);
+
+        let usecase = RemoveRepositoryUseCase::new(mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "https://github.com/user/repo", false);
+
+        // Assert
+        assert!(matches!(result, Err(GrmError::UserCancelled)));
+        assert!(mock_fs.exists(PathBuf::from("/test_root/github.com/user/repo+main").as_ref()));
+    }
+
+    #[test]
+    fn test_remove_repository_not_found() {
+        // Arrange
+        let mock_fs = Arc::new(MockFileSystem::new());
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let usecase = RemoveRepositoryUseCase::new(mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "https://github.com/user/nonexistent", false);
+
+        // Assert
+        assert!(matches!(result, Err(GrmError::UnmanagedRepository { .. })));
+    }
+
+    #[test]
+    fn test_remove_multiple_worktrees() {
+        // Arrange
+        let mock_fs = Arc::new(MockFileSystem::new());
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo("/test_root/github.com/user/repo+main");
+        mock_fs.add_git_repo("/test_root/github.com/user/repo+feature");
+        mock_fs.add_git_repo("/test_root/github.com/user/repo+dev");
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+        mock_ui.set_confirm(true);
+
+        let usecase = RemoveRepositoryUseCase::new(mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "https://github.com/user/repo", false);
+
+        // Assert
+        assert!(result.is_ok());
+        assert!(!mock_fs.exists(PathBuf::from("/test_root/github.com/user/repo+main").as_ref()));
+        assert!(!mock_fs.exists(PathBuf::from("/test_root/github.com/user/repo+feature").as_ref()));
+        assert!(!mock_fs.exists(PathBuf::from("/test_root/github.com/user/repo+dev").as_ref()));
+        let messages = mock_ui.get_printed_messages();
+        assert!(
+            messages
+                .iter()
+                .any(|m| m.contains("Successfully removed 3 repository"))
+        );
+    }
+}

@@ -258,4 +258,86 @@ mod tests {
             PathBuf::from("/home/user/grm/.shared/github.com/test/repo/.env")
         );
     }
+
+    #[test]
+    fn test_from_url_with_special_characters() {
+        // 目的: 特殊文字を含むURLの処理
+        // 検証: ハイフン、アンダースコアなどが正しく処理される
+
+        let info = RepoInfo::from_url("https://github.com/my-org/my_repo-2.git").unwrap();
+        assert_eq!(info.host, "github.com");
+        assert_eq!(info.user, "my-org");
+        assert_eq!(info.repo, "my_repo-2");
+
+        let info = RepoInfo::from_url("git@gitlab.com:user_123/repo-name.git").unwrap();
+        assert_eq!(info.host, "gitlab.com");
+        assert_eq!(info.user, "user_123");
+        assert_eq!(info.repo, "repo-name");
+    }
+
+    #[test]
+    fn test_from_url_invalid_formats() {
+        // 目的: 不正なURL形式のエラー処理
+        // 検証: 様々な不正な形式で適切なエラーが返される
+
+        // プロトコルなし
+        assert!(RepoInfo::from_url("github.com/user/repo").is_err());
+
+        // ユーザー/リポジトリ情報不足
+        assert!(RepoInfo::from_url("https://github.com/user").is_err());
+        assert!(RepoInfo::from_url("https://github.com/").is_err());
+
+        // 空文字列
+        assert!(RepoInfo::from_url("").is_err());
+
+        // 不正なセパレータ
+        assert!(RepoInfo::from_url("git@github.com/user/repo.git").is_err());
+    }
+
+    #[test]
+    fn test_from_path_outside_root() {
+        // 目的: ルート外のパス処理
+        // 検証: ルート外のパスで適切なエラーが返される
+
+        let root = PathBuf::from("/home/user/grm");
+        let outside_path = PathBuf::from("/home/user/other/github.com/test/repo+main");
+
+        let result = RepoInfo::from_path(&root, &outside_path);
+
+        assert!(result.is_err());
+        match result {
+            Err(RepositoryError::Invalid(msg)) => {
+                assert!(msg.contains("not under root"));
+            }
+            _ => panic!("Expected Invalid error"),
+        }
+    }
+
+    #[test]
+    fn test_build_shared_path_with_nested_files() {
+        // 目的: ネストされたファイルパスの共有パス構築
+        // 検証: ディレクトリ構造が正しく反映される
+
+        let info = RepoInfo::new(
+            "github.com".to_string(),
+            "test".to_string(),
+            "repo".to_string(),
+            None,
+        );
+        let root = PathBuf::from("/home/user/grm");
+
+        // ネストしたパス
+        let path = info.build_shared_path(&root, Path::new("config/database/settings.json"));
+        assert_eq!(
+            path,
+            PathBuf::from("/home/user/grm/.shared/github.com/test/repo/config/database/settings.json")
+        );
+
+        // 深い階層
+        let path = info.build_shared_path(&root, Path::new("a/b/c/d/file.txt"));
+        assert_eq!(
+            path,
+            PathBuf::from("/home/user/grm/.shared/github.com/test/repo/a/b/c/d/file.txt")
+        );
+    }
 }

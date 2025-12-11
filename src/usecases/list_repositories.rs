@@ -47,3 +47,118 @@ impl ListRepositoriesUseCase {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapters::test_helpers::{MockFileSystem, MockUserInteraction};
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_list_repositories_success() {
+        // Arrange
+        let mock_fs = MockFileSystem::new();
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_git_repo("/test_root/repo1");
+        mock_fs.add_git_repo("/test_root/repo2");
+        mock_fs.add_git_repo("/test_root/repo3");
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let usecase = ListRepositoriesUseCase::new(
+            Arc::new(mock_fs),
+            mock_ui.clone(),
+        );
+
+        let config = Config { root: PathBuf::from("/test_root") };
+
+        // Act
+        let result = usecase.execute(&config, false);
+
+        // Assert
+        assert!(result.is_ok());
+        let messages = mock_ui.get_printed_messages();
+        assert_eq!(messages.len(), 3);
+        assert!(messages.contains(&"repo1".to_string()));
+        assert!(messages.contains(&"repo2".to_string()));
+        assert!(messages.contains(&"repo3".to_string()));
+    }
+
+    #[test]
+    fn test_list_repositories_full_path() {
+        // Arrange
+        let mock_fs = MockFileSystem::new();
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_git_repo("/test_root/repo1");
+        mock_fs.add_dir("/test_root/nested");
+        mock_fs.add_git_repo("/test_root/nested/repo2");
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let usecase = ListRepositoriesUseCase::new(
+            Arc::new(mock_fs),
+            mock_ui.clone(),
+        );
+
+        let config = Config { root: PathBuf::from("/test_root") };
+
+        // Act
+        let result = usecase.execute(&config, true);
+
+        // Assert
+        assert!(result.is_ok());
+        let messages = mock_ui.get_printed_messages();
+        assert_eq!(messages.len(), 2);
+        assert!(messages.contains(&"/test_root/repo1".to_string()));
+        assert!(messages.contains(&"/test_root/nested/repo2".to_string()));
+    }
+
+    #[test]
+    fn test_list_repositories_empty() {
+        // Arrange
+        let mock_fs = MockFileSystem::new();
+        mock_fs.add_dir("/test_root");
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let usecase = ListRepositoriesUseCase::new(
+            Arc::new(mock_fs),
+            mock_ui.clone(),
+        );
+
+        let config = Config { root: PathBuf::from("/test_root") };
+
+        // Act
+        let result = usecase.execute(&config, false);
+
+        // Assert
+        assert!(result.is_ok());
+        let messages = mock_ui.get_printed_messages();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0], "Nothing to display");
+    }
+
+    #[test]
+    fn test_list_repositories_root_not_exists() {
+        // Arrange
+        let mock_fs = MockFileSystem::new();
+
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let usecase = ListRepositoriesUseCase::new(
+            Arc::new(mock_fs),
+            mock_ui.clone(),
+        );
+
+        let config = Config { root: PathBuf::from("/nonexistent_root") };
+
+        // Act
+        let result = usecase.execute(&config, false);
+
+        // Assert
+        assert!(result.is_ok());
+        let messages = mock_ui.get_printed_messages();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0], "Nothing to display");
+    }
+}

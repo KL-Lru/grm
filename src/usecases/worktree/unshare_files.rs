@@ -52,3 +52,119 @@ impl UnshareFilesUseCase {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapters::test_helpers::{MockFileSystem, MockGitRepository, MockUserInteraction};
+
+    #[test]
+    fn test_unshare_success() {
+        // Arrange
+        let mock_git = Arc::new(MockGitRepository::new());
+        let mock_fs = Arc::new(MockFileSystem::new());
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let repo_root = PathBuf::from("/test_root/github.com/user/repo+main");
+        mock_git.set_repo_root(&repo_root);
+
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo(&repo_root);
+        mock_fs.add_dir("/test_root/.shared");
+        mock_fs.add_dir("/test_root/.shared/github.com");
+        mock_fs.add_dir("/test_root/.shared/github.com/user");
+        mock_fs.add_dir("/test_root/.shared/github.com/user/repo");
+
+        // Set current directory to repo root
+        mock_fs.set_current_dir(&repo_root);
+
+        // Setup: Shared file with symlinks in multiple worktrees
+        let shared_file = PathBuf::from("/test_root/.shared/github.com/user/repo/test.txt");
+        mock_fs.add_file(&shared_file);
+        mock_fs.add_symlink(&repo_root.join("test.txt"), &shared_file);
+
+        let worktree = PathBuf::from("/test_root/github.com/user/repo+feature");
+        mock_fs.add_git_repo(&worktree);
+        mock_fs.add_symlink(&worktree.join("test.txt"), &shared_file);
+
+        let usecase = UnshareFilesUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "test.txt");
+
+        // Assert
+        assert!(result.is_ok());
+        let messages = mock_ui.get_printed_messages();
+        assert!(messages
+            .iter()
+            .any(|m| m.contains("Unshared 2 file(s) from all worktrees")));
+    }
+
+    #[test]
+    fn test_unshare_no_files() {
+        // Arrange
+        let mock_git = Arc::new(MockGitRepository::new());
+        let mock_fs = Arc::new(MockFileSystem::new());
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let repo_root = PathBuf::from("/test_root/github.com/user/repo+main");
+        mock_git.set_repo_root(&repo_root);
+
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo(&repo_root);
+        mock_fs.add_dir("/test_root/.shared");
+        mock_fs.add_dir("/test_root/.shared/github.com");
+        mock_fs.add_dir("/test_root/.shared/github.com/user");
+        mock_fs.add_dir("/test_root/.shared/github.com/user/repo");
+
+        // Set current directory to repo root
+        mock_fs.set_current_dir(&repo_root);
+
+        let usecase = UnshareFilesUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "nonexistent.txt");
+
+        // Assert
+        assert!(result.is_ok());
+        let messages = mock_ui.get_printed_messages();
+        assert!(messages
+            .iter()
+            .any(|m| m.contains("No shared files found to unshare")));
+    }
+
+    #[test]
+    fn test_unshare_not_in_repo() {
+        // Arrange
+        let mock_git = Arc::new(MockGitRepository::new());
+        let mock_fs = Arc::new(MockFileSystem::new());
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        // Don't set repo_root - simulates not being in a repository
+
+        let usecase = UnshareFilesUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "test.txt");
+
+        // Assert
+        assert!(matches!(result, Err(GrmError::NotInManagedRepository)));
+    }
+}
+

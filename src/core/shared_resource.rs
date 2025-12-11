@@ -245,3 +245,223 @@ impl SharedResource {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapters::test_helpers::MockFileSystem;
+
+    fn setup() -> (Arc<MockFileSystem>, RepoInfo, PathBuf) {
+        let fs = Arc::new(MockFileSystem::new());
+        let repo_info = RepoInfo::from_url("https://github.com/user/repo").unwrap();
+        let root = PathBuf::from("/grm");
+        fs.add_dir(&root);
+        (fs, repo_info, root)
+    }
+
+    #[test]
+    fn test_share_file_success() {
+        // 目的: ファイル共有の基本動作
+        // 検証: ファイルが共有ストレージに移動し、各ワークツリーにシンボリックリンクが作成される
+
+        let (fs, repo_info, root) = setup();
+
+        // ワークツリーとファイルの準備
+        fs.add_dir(&root.join("github.com"));
+        fs.add_dir(&root.join("github.com/user"));
+        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+        fs.add_git_repo(&root.join("github.com/user/repo+feature"));
+
+        let repo_root = root.join("github.com/user/repo+main");
+        fs.add_file(&repo_root.join("config.json"));
+        fs.set_current_dir(&repo_root);
+
+        let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
+        let result = shared.share(&repo_root, Path::new("config.json"));
+
+        assert!(result.is_ok(), "share failed: {:?}", result.err());
+
+        // 共有ストレージにファイルが存在
+        let shared_path = root.join(".shared/github.com/user/repo/config.json");
+        assert!(fs.exists(&shared_path));
+
+        // 各ワークツリーにシンボリックリンクが作成される
+        assert!(fs.is_symlink(&repo_root.join("config.json")));
+        assert!(fs.is_symlink(&root.join("github.com/user/repo+feature/config.json")));
+    }
+
+    #[test]
+    fn test_share_directory_success() {
+        // 目的: ディレクトリ共有
+        // 検証: ディレクトリ全体が共有される
+
+        let (fs, repo_info, root) = setup();
+
+        fs.add_dir(&root.join("github.com"));
+        fs.add_dir(&root.join("github.com/user"));
+        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+
+        let repo_root = root.join("github.com/user/repo+main");
+        fs.add_dir(&repo_root.join("shared_dir"));
+        fs.add_file(&repo_root.join("shared_dir/file.txt"));
+        fs.set_current_dir(&repo_root);
+
+        let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
+        let result = shared.share(&repo_root, Path::new("shared_dir"));
+
+        assert!(result.is_ok());
+
+        let shared_path = root.join(".shared/github.com/user/repo/shared_dir");
+        assert!(fs.exists(&shared_path));
+    }
+
+    #[test]
+    fn test_unshare_success() {
+        // 目的: シンボリックリンク削除
+        // 検証: 削除数が正しく返される
+
+        let (fs, repo_info, root) = setup();
+
+        fs.add_dir(&root.join("github.com"));
+        fs.add_dir(&root.join("github.com/user"));
+        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+        fs.add_git_repo(&root.join("github.com/user/repo+feature"));
+
+        let repo_root = root.join("github.com/user/repo+main");
+        let shared_file = root.join(".shared/github.com/user/repo/config.json");
+        fs.add_dir(&root.join(".shared"));
+        fs.add_dir(&root.join(".shared/github.com"));
+        fs.add_dir(&root.join(".shared/github.com/user"));
+        fs.add_dir(&root.join(".shared/github.com/user/repo"));
+        fs.add_file(&shared_file);
+
+        // シンボリックリンクを作成
+        fs.add_symlink(&repo_root.join("config.json"), &shared_file);
+        fs.add_symlink(&root.join("github.com/user/repo+feature/config.json"), &shared_file);
+        fs.set_current_dir(&repo_root);
+
+        let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
+        let result = shared.unshare(&repo_root, Path::new("config.json"));
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 2);
+
+        // シンボリックリンクが削除されている
+        assert!(!fs.exists(&repo_root.join("config.json")));
+        assert!(!fs.exists(&root.join("github.com/user/repo+feature/config.json")));
+    }
+
+    #[test]
+    fn test_isolate_success() {
+        // 目的: シンボリックリンクを実体ファイルに置換
+        // 検証: シンボリックリンクが削除され、実体ファイルがコピーされる
+
+        let (fs, repo_info, root) = setup();
+
+        fs.add_dir(&root.join("github.com"));
+        fs.add_dir(&root.join("github.com/user"));
+        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+
+        let repo_root = root.join("github.com/user/repo+main");
+        let shared_file = root.join(".shared/github.com/user/repo/config.json");
+        fs.add_dir(&root.join(".shared"));
+        fs.add_dir(&root.join(".shared/github.com"));
+        fs.add_dir(&root.join(".shared/github.com/user"));
+        fs.add_dir(&root.join(".shared/github.com/user/repo"));
+        fs.add_file(&shared_file);
+        fs.add_symlink(&repo_root.join("config.json"), &shared_file);
+        fs.set_current_dir(&repo_root);
+
+        let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
+        let result = shared.isolate(&repo_root, Path::new("config.json"));
+
+        assert!(result.is_ok());
+
+        // シンボリックリンクではなく実体ファイルになっている
+        assert!(!fs.is_symlink(&repo_root.join("config.json")));
+        assert!(fs.exists(&repo_root.join("config.json")));
+    }
+
+    #[test]
+    fn test_conflicts_detection() {
+        // 目的: 他のワークツリーとの競合検出
+        // 検証: 競合するファイルが正しく検出される
+
+        let (fs, repo_info, root) = setup();
+
+        fs.add_dir(&root.join("github.com"));
+        fs.add_dir(&root.join("github.com/user"));
+        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+        fs.add_git_repo(&root.join("github.com/user/repo+feature"));
+
+        let repo_root = root.join("github.com/user/repo+main");
+        let shared_file = root.join(".shared/github.com/user/repo/config.json");
+        fs.add_dir(&root.join(".shared"));
+        fs.add_dir(&root.join(".shared/github.com"));
+        fs.add_dir(&root.join(".shared/github.com/user"));
+        fs.add_dir(&root.join(".shared/github.com/user/repo"));
+        fs.add_file(&shared_file);
+        fs.add_file(&repo_root.join("config.json"));
+        fs.add_file(&root.join("github.com/user/repo+feature/config.json"));
+        fs.set_current_dir(&repo_root);
+
+        let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
+        let result = shared.conflicts(&repo_root, Path::new("config.json"));
+
+        assert!(result.is_ok());
+        let conflicts = result.unwrap();
+
+        assert_eq!(conflicts.len(), 1);
+        assert!(conflicts.contains(&root.join("github.com/user/repo+feature/config.json")));
+    }
+
+    #[test]
+    fn test_mount_success() {
+        // 目的: 共有ストレージマウント
+        // 検証: 共有ファイルがワークツリーにシンボリックリンクとして作成される
+
+        let (fs, repo_info, root) = setup();
+
+        fs.add_dir(&root.join("github.com"));
+        fs.add_dir(&root.join("github.com/user"));
+        fs.add_git_repo(&root.join("github.com/user/repo+new"));
+
+        let shared_root = root.join(".shared/github.com/user/repo");
+        fs.add_dir(&root.join(".shared"));
+        fs.add_dir(&root.join(".shared/github.com"));
+        fs.add_dir(&root.join(".shared/github.com/user"));
+        fs.add_dir(&shared_root);
+        fs.add_file(&shared_root.join("config.json"));
+
+        let repo_root = root.join("github.com/user/repo+new");
+
+        let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
+        let result = shared.mount(&repo_root);
+
+        assert!(result.is_ok());
+
+        // シンボリックリンクが作成されている
+        assert!(fs.is_symlink(&repo_root.join("config.json")));
+    }
+
+    #[test]
+    fn test_share_file_not_found() {
+        // 目的: 存在しないファイルのエラー
+        // 検証: NotFoundエラーが返される
+
+        let (fs, repo_info, root) = setup();
+
+        fs.add_dir(&root.join("github.com"));
+        fs.add_dir(&root.join("github.com/user"));
+        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+
+        let repo_root = root.join("github.com/user/repo+main");
+        fs.set_current_dir(&repo_root);
+
+        let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
+        let result = shared.share(&repo_root, Path::new("nonexistent.txt"));
+
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), GrmError::NotFound(_)));
+    }
+}

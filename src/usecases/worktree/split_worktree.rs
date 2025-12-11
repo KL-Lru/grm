@@ -56,3 +56,185 @@ impl SplitWorktreeUseCase {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapters::test_helpers::{MockFileSystem, MockGitRepository, MockUserInteraction};
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_split_worktree_new_branch() {
+        // Arrange
+        let mock_git = Arc::new(MockGitRepository::new());
+        let mock_fs = Arc::new(MockFileSystem::new());
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let repo_root = PathBuf::from("/test_root/github.com/user/repo+main");
+        mock_git.set_repo_root(&repo_root);
+        mock_git.set_remote_url(&repo_root, "https://github.com/user/repo");
+
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo(&repo_root);
+        mock_fs.add_dir("/test_root/.shared");
+        mock_fs.add_dir("/test_root/.shared/github.com");
+        mock_fs.add_dir("/test_root/.shared/github.com/user");
+        mock_fs.add_dir("/test_root/.shared/github.com/user/repo");
+
+        let usecase = SplitWorktreeUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "feature");
+
+        // Assert
+        if let Err(ref e) = result {
+            eprintln!("Error: {:?}", e);
+        }
+        assert!(result.is_ok(), "Failed with error: {:?}", result.err());
+        let worktrees = mock_git.get_worktrees();
+        assert_eq!(worktrees.len(), 1);
+        assert_eq!(
+            worktrees[0],
+            PathBuf::from("/test_root/github.com/user/repo+feature")
+        );
+    }
+
+    #[test]
+    fn test_split_worktree_existing_branch() {
+        // Arrange
+        let mock_git = Arc::new(MockGitRepository::new());
+        let mock_fs = Arc::new(MockFileSystem::new());
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let repo_root = PathBuf::from("/test_root/github.com/user/repo+main");
+        mock_git.set_repo_root(&repo_root);
+        mock_git.set_remote_url(&repo_root, "https://github.com/user/repo");
+        mock_git.add_local_branch("develop");
+
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo(&repo_root);
+        mock_fs.add_dir("/test_root/.shared");
+        mock_fs.add_dir("/test_root/.shared/github.com");
+        mock_fs.add_dir("/test_root/.shared/github.com/user");
+        mock_fs.add_dir("/test_root/.shared/github.com/user/repo");
+
+        let usecase = SplitWorktreeUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "develop");
+
+        // Assert
+        assert!(result.is_ok());
+        let worktrees = mock_git.get_worktrees();
+        assert_eq!(worktrees.len(), 1);
+    }
+
+    #[test]
+    fn test_split_worktree_already_exists() {
+        // Arrange
+        let mock_git = Arc::new(MockGitRepository::new());
+        let mock_fs = Arc::new(MockFileSystem::new());
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let repo_root = PathBuf::from("/test_root/github.com/user/repo+main");
+        mock_git.set_repo_root(&repo_root);
+        mock_git.set_remote_url(&repo_root, "https://github.com/user/repo");
+
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo(&repo_root);
+        mock_fs.add_dir("/test_root/.shared");
+        mock_fs.add_dir("/test_root/.shared/github.com");
+        mock_fs.add_dir("/test_root/.shared/github.com/user");
+        mock_fs.add_dir("/test_root/.shared/github.com/user/repo");
+        mock_fs.add_git_repo("/test_root/github.com/user/repo+feature");
+
+        let usecase = SplitWorktreeUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "feature");
+
+        // Assert
+        assert!(matches!(result, Err(GrmError::AlreadyExists(_))));
+    }
+
+    #[test]
+    fn test_split_worktree_not_in_repo() {
+        // Arrange
+        let mock_git = Arc::new(MockGitRepository::new());
+        let mock_fs = Arc::new(MockFileSystem::new());
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        // Don't set repo_root or remote_url - simulates not being in a repository
+
+        let usecase = SplitWorktreeUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "feature");
+
+        // Assert
+        assert!(matches!(result, Err(GrmError::NotInManagedRepository)));
+    }
+
+    #[test]
+    fn test_split_worktree_remote_branch() {
+        // Arrange
+        let mock_git = Arc::new(MockGitRepository::new());
+        let mock_fs = Arc::new(MockFileSystem::new());
+        let mock_ui = Arc::new(MockUserInteraction::new());
+
+        let repo_root = PathBuf::from("/test_root/github.com/user/repo+main");
+        let remote_url = "https://github.com/user/repo";
+        mock_git.set_repo_root(&repo_root);
+        mock_git.set_remote_url(&repo_root, remote_url);
+        mock_git.add_remote_branch(remote_url, "release");
+
+        mock_fs.add_dir("/test_root");
+        mock_fs.add_dir("/test_root/github.com");
+        mock_fs.add_dir("/test_root/github.com/user");
+        mock_fs.add_git_repo(&repo_root);
+        mock_fs.add_dir("/test_root/.shared");
+        mock_fs.add_dir("/test_root/.shared/github.com");
+        mock_fs.add_dir("/test_root/.shared/github.com/user");
+        mock_fs.add_dir("/test_root/.shared/github.com/user/repo");
+
+        let usecase = SplitWorktreeUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
+
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
+
+        // Act
+        let result = usecase.execute(&config, "release");
+
+        // Assert
+        assert!(result.is_ok());
+        let worktrees = mock_git.get_worktrees();
+        assert_eq!(worktrees.len(), 1);
+        assert_eq!(
+            worktrees[0],
+            PathBuf::from("/test_root/github.com/user/repo+release")
+        );
+    }
+}
