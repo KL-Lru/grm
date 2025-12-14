@@ -1,12 +1,12 @@
 use clap::{CommandFactory, Parser, Subcommand};
 
 use crate::configs::Config;
-use crate::errors::GrmError;
 use crate::container::AppContainer;
+use crate::errors::GrmError;
 use crate::usecases::{
-    CloneRepositoryUseCase, IsolateFilesUseCase, ListRepositoriesUseCase, RemoveRepositoryUseCase,
-    RemoveWorktreeUseCase, ShareFilesUseCase, ShowRootUseCase, SplitWorktreeUseCase,
-    UnshareFilesUseCase,
+    CloneRepositoryUseCase, InitRepositoryUseCase, IsolateFilesUseCase, ListRepositoriesUseCase,
+    RemoveRepositoryUseCase, RemoveWorktreeUseCase, ShareFilesUseCase, ShowRootUseCase,
+    SplitWorktreeUseCase, UnshareFilesUseCase,
 };
 
 #[derive(Debug, Parser)]
@@ -30,6 +30,15 @@ impl Cli {
             }
             Some(Commands::Clone { url, branch }) => {
                 let usecase = CloneRepositoryUseCase::new(
+                    container.git.clone(),
+                    container.fs.clone(),
+                    container.ui.clone(),
+                );
+                usecase.execute(&config, url, branch.as_deref())?;
+                Ok(())
+            }
+            Some(Commands::Init { url, branch }) => {
+                let usecase = InitRepositoryUseCase::new(
                     container.git.clone(),
                     container.fs.clone(),
                     container.ui.clone(),
@@ -115,6 +124,16 @@ enum Commands {
 
         #[arg(short, long)]
         #[arg(help = "Branch to clone (queries remote if not specified)")]
+        branch: Option<String>,
+    },
+
+    #[command(about = "Initialize a new repository in the managed structure")]
+    Init {
+        #[arg(help = "Git repository URL")]
+        url: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Initial branch name (default: main)")]
         branch: Option<String>,
     },
 

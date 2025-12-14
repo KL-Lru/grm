@@ -28,6 +28,15 @@ If branch is not specified, the default branch of the repository is used.
 grm clone <repository_url> [-b <branch>]
 ```
 
+### init
+
+Initialize a Git repository.
+If branch is not specified, `main` branch is created.
+
+```bash
+grm init <repository_url> [-b <branch>]
+```
+
 ### list
 
 List all managed Git repositories.

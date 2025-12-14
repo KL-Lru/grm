@@ -17,6 +17,7 @@ pub struct MockGitRepository {
     remote_branches: RefCell<HashMap<String, Vec<String>>>,
     cloned_repos: RefCell<Vec<(String, PathBuf)>>,
     worktrees: RefCell<Vec<PathBuf>>,
+    initialized_repos: RefCell<Vec<(PathBuf, String)>>,
     force_error: RefCell<Option<GitError>>,
 }
 
@@ -30,6 +31,7 @@ impl MockGitRepository {
             remote_branches: RefCell::new(HashMap::new()),
             cloned_repos: RefCell::new(Vec::new()),
             worktrees: RefCell::new(Vec::new()),
+            initialized_repos: RefCell::new(Vec::new()),
             force_error: RefCell::new(None),
         }
     }
@@ -82,6 +84,11 @@ impl MockGitRepository {
     /// Get the list of worktrees (for assertions)
     pub fn get_worktrees(&self) -> Vec<PathBuf> {
         self.worktrees.borrow().clone()
+    }
+
+    /// Get the list of initialized repositories (for assertions)
+    pub fn get_initialized_repos(&self) -> Vec<(PathBuf, String)> {
+        self.initialized_repos.borrow().clone()
     }
 
     fn check_error(&self) -> Result<(), GitError> {
@@ -189,6 +196,16 @@ impl GitRepository for MockGitRepository {
 
         let mut worktrees = self.worktrees.borrow_mut();
         worktrees.retain(|p| p != worktree_path);
+
+        Ok(())
+    }
+
+    fn init_repository(&self, destination: &Path, branch: &str) -> Result<(), GitError> {
+        self.check_error()?;
+
+        self.initialized_repos
+            .borrow_mut()
+            .push((destination.to_path_buf(), branch.to_string()));
 
         Ok(())
     }

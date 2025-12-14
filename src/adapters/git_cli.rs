@@ -172,6 +172,11 @@ impl GitRepository for GitCli {
         let worktree_path_str = worktree_path.to_string_lossy();
         Self::run_command_inherit(&["worktree", "remove", worktree_path_str.as_ref()])
     }
+
+    fn init_repository(&self, destination: &Path, branch: &str) -> Result<(), GitError> {
+        let dest_path = destination.to_string_lossy();
+        Self::run_command_inherit(&["init", "--initial-branch", branch, dest_path.as_ref()])
+    }
 }
 
 #[cfg(test)]

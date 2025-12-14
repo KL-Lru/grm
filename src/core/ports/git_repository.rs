@@ -38,4 +38,6 @@ pub trait GitRepository {
     ) -> Result<(), GitError>;
 
     fn remove_worktree(&self, worktree_path: &Path) -> Result<(), GitError>;
+
+    fn init_repository(&self, destination: &Path, branch: &str) -> Result<(), GitError>;
 }
