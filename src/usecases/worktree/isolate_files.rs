@@ -152,4 +152,3 @@ mod tests {
         assert!(matches!(result, Err(GrmError::NotInManagedRepository)));
     }
 }
-

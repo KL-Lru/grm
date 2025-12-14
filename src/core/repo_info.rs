@@ -17,7 +17,12 @@ pub enum RepositoryError {
 
 impl RepoInfo {
     pub fn new(host: String, user: String, repo: String, branch: Option<String>) -> Self {
-        Self { host, user, repo, branch }
+        Self {
+            host,
+            user,
+            repo,
+            branch,
+        }
     }
 
     /// Parse a git repository URL into ``RepoInfo``
@@ -330,7 +335,9 @@ mod tests {
         let path = info.build_shared_path(&root, Path::new("config/database/settings.json"));
         assert_eq!(
             path,
-            PathBuf::from("/home/user/grm/.shared/github.com/test/repo/config/database/settings.json")
+            PathBuf::from(
+                "/home/user/grm/.shared/github.com/test/repo/config/database/settings.json"
+            )
         );
 
         // 深い階層

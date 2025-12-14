@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::core::ports::FileSystem;
 use crate::configs::{ConfigError, provider::ConfigProvider};
+use crate::core::ports::FileSystem;
 
 const GIT_CONFIG_ROOT_KEY: &str = "grm.root";
 

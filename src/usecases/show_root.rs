@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::core::ports::UserInteraction;
 use crate::configs::Config;
+use crate::core::ports::UserInteraction;
 
 pub struct ShowRootUseCase {
     ui: Arc<dyn UserInteraction>,
@@ -50,11 +50,15 @@ mod tests {
         let usecase = ShowRootUseCase::new(ui.clone());
 
         let root1 = PathBuf::from("/custom/path1");
-        let config1 = Config { root: root1.clone() };
+        let config1 = Config {
+            root: root1.clone(),
+        };
         usecase.execute(&config1);
 
         let root2 = PathBuf::from("/custom/path2");
-        let config2 = Config { root: root2.clone() };
+        let config2 = Config {
+            root: root2.clone(),
+        };
         usecase.execute(&config2);
 
         let messages = ui.get_printed_messages();
@@ -63,4 +67,3 @@ mod tests {
         assert_eq!(messages[1], root2.display().to_string());
     }
 }
-

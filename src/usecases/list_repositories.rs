@@ -65,12 +65,11 @@ mod tests {
 
         let mock_ui = Arc::new(MockUserInteraction::new());
 
-        let usecase = ListRepositoriesUseCase::new(
-            Arc::new(mock_fs),
-            mock_ui.clone(),
-        );
+        let usecase = ListRepositoriesUseCase::new(Arc::new(mock_fs), mock_ui.clone());
 
-        let config = Config { root: PathBuf::from("/test_root") };
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
 
         // Act
         let result = usecase.execute(&config, false);
@@ -95,12 +94,11 @@ mod tests {
 
         let mock_ui = Arc::new(MockUserInteraction::new());
 
-        let usecase = ListRepositoriesUseCase::new(
-            Arc::new(mock_fs),
-            mock_ui.clone(),
-        );
+        let usecase = ListRepositoriesUseCase::new(Arc::new(mock_fs), mock_ui.clone());
 
-        let config = Config { root: PathBuf::from("/test_root") };
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
 
         // Act
         let result = usecase.execute(&config, true);
@@ -121,12 +119,11 @@ mod tests {
 
         let mock_ui = Arc::new(MockUserInteraction::new());
 
-        let usecase = ListRepositoriesUseCase::new(
-            Arc::new(mock_fs),
-            mock_ui.clone(),
-        );
+        let usecase = ListRepositoriesUseCase::new(Arc::new(mock_fs), mock_ui.clone());
 
-        let config = Config { root: PathBuf::from("/test_root") };
+        let config = Config {
+            root: PathBuf::from("/test_root"),
+        };
 
         // Act
         let result = usecase.execute(&config, false);
@@ -145,12 +142,11 @@ mod tests {
 
         let mock_ui = Arc::new(MockUserInteraction::new());
 
-        let usecase = ListRepositoriesUseCase::new(
-            Arc::new(mock_fs),
-            mock_ui.clone(),
-        );
+        let usecase = ListRepositoriesUseCase::new(Arc::new(mock_fs), mock_ui.clone());
 
-        let config = Config { root: PathBuf::from("/nonexistent_root") };
+        let config = Config {
+            root: PathBuf::from("/nonexistent_root"),
+        };
 
         // Act
         let result = usecase.execute(&config, false);

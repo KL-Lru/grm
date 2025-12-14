@@ -101,9 +101,11 @@ mod tests {
         // Assert
         assert!(result.is_ok());
         let messages = mock_ui.get_printed_messages();
-        assert!(messages
-            .iter()
-            .any(|m| m.contains("Unshared 2 file(s) from all worktrees")));
+        assert!(
+            messages
+                .iter()
+                .any(|m| m.contains("Unshared 2 file(s) from all worktrees"))
+        );
     }
 
     #[test]
@@ -140,9 +142,11 @@ mod tests {
         // Assert
         assert!(result.is_ok());
         let messages = mock_ui.get_printed_messages();
-        assert!(messages
-            .iter()
-            .any(|m| m.contains("No shared files found to unshare")));
+        assert!(
+            messages
+                .iter()
+                .any(|m| m.contains("No shared files found to unshare"))
+        );
     }
 
     #[test]
@@ -167,4 +171,3 @@ mod tests {
         assert!(matches!(result, Err(GrmError::NotInManagedRepository)));
     }
 }
-

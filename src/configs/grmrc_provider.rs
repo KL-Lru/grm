@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 
-use crate::core::ports::FileSystem;
 use crate::configs::{ConfigError, provider::ConfigProvider};
+use crate::core::ports::FileSystem;
 
 /// TOML structure for .grmrc file
 #[derive(Debug, Deserialize)]

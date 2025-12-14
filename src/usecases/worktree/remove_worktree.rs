@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::core::ports::{GitRepository, UserInteraction};
 use crate::configs::Config;
 use crate::core::RepoInfo;
+use crate::core::ports::{GitRepository, UserInteraction};
 use crate::errors::GrmError;
 
 pub struct RemoveWorktreeUseCase {
@@ -50,7 +50,6 @@ impl RemoveWorktreeUseCase {
 mod tests {
     use super::*;
     use crate::adapters::test_helpers::{MockGitRepository, MockUserInteraction};
-    use std::path::PathBuf;
     use std::fs;
 
     #[test]
@@ -81,9 +80,7 @@ mod tests {
         // Assert
         assert!(result.is_ok());
         let messages = mock_ui.get_printed_messages();
-        assert!(messages
-            .iter()
-            .any(|m| m.contains("Removed worktree")));
+        assert!(messages.iter().any(|m| m.contains("Removed worktree")));
     }
 
     #[test]

@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::core::ports::{FileSystem, GitRepository, UserInteraction};
 use crate::configs::Config;
 use crate::core::RepoInfo;
+use crate::core::ports::{FileSystem, GitRepository, UserInteraction};
 use crate::errors::GrmError;
 
 pub struct CloneRepositoryUseCase {
@@ -61,7 +61,12 @@ mod tests {
     use crate::adapters::test_helpers::{MockFileSystem, MockGitRepository, MockUserInteraction};
     use crate::core::ports::GitError;
 
-    fn setup() -> (Arc<MockGitRepository>, Arc<MockFileSystem>, Arc<MockUserInteraction>, Config) {
+    fn setup() -> (
+        Arc<MockGitRepository>,
+        Arc<MockFileSystem>,
+        Arc<MockUserInteraction>,
+        Config,
+    ) {
         let git = Arc::new(MockGitRepository::new());
         let fs = Arc::new(MockFileSystem::new());
         let ui = Arc::new(MockUserInteraction::new());
@@ -182,4 +187,3 @@ mod tests {
         assert!(matches!(result.unwrap_err(), GrmError::Git(_)));
     }
 }
-

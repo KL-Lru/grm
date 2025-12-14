@@ -337,7 +337,10 @@ mod tests {
 
         // シンボリックリンクを作成
         fs.add_symlink(&repo_root.join("config.json"), &shared_file);
-        fs.add_symlink(&root.join("github.com/user/repo+feature/config.json"), &shared_file);
+        fs.add_symlink(
+            &root.join("github.com/user/repo+feature/config.json"),
+            &shared_file,
+        );
         fs.set_current_dir(&repo_root);
 
         let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
