@@ -5,8 +5,8 @@ use crate::container::AppContainer;
 use crate::errors::GrmError;
 use crate::usecases::{
     CloneRepositoryUseCase, InitRepositoryUseCase, IsolateFilesUseCase, ListRepositoriesUseCase,
-    RemoveRepositoryUseCase, RemoveWorktreeUseCase, ShareFilesUseCase, ShowRootUseCase,
-    SplitWorktreeUseCase, UnshareFilesUseCase,
+    MoveRepositoryUseCase, RemoveRepositoryUseCase, RemoveWorktreeUseCase, ShareFilesUseCase,
+    ShowRootUseCase, SplitWorktreeUseCase, UnshareFilesUseCase,
 };
 
 #[derive(Debug, Parser)]
@@ -50,6 +50,15 @@ impl Cli {
                 let usecase =
                     ListRepositoriesUseCase::new(container.fs.clone(), container.ui.clone());
                 usecase.execute(&config, *full_path)?;
+                Ok(())
+            }
+            Some(Commands::Move { path }) => {
+                let usecase = MoveRepositoryUseCase::new(
+                    container.git.clone(),
+                    container.fs.clone(),
+                    container.ui.clone(),
+                );
+                usecase.execute(&config, path)?;
                 Ok(())
             }
             Some(Commands::Remove { url, force }) => {
@@ -141,6 +150,12 @@ enum Commands {
     List {
         #[arg(short, long, help = "Show full absolute paths")]
         full_path: bool,
+    },
+
+    #[command(about = "Move an existing repository into GRM management")]
+    Move {
+        #[arg(help = "Path to existing Git repository")]
+        path: String,
     },
 
     #[command(about = "Remove a repository")]

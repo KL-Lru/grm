@@ -134,6 +134,23 @@ impl GitRepository for GitCli {
         Ok(false)
     }
 
+    fn get_current_branch(&self, repo_path: &Path) -> Result<String, GitError> {
+        let output = Self::run_command(&[
+            "-C",
+            &repo_path.to_string_lossy(),
+            "branch",
+            "--show-current",
+        ])?;
+
+        if output.is_empty() {
+            return Err(GitError::Parse(
+                "Could not determine current branch".to_string(),
+            ));
+        }
+
+        Ok(output)
+    }
+
     fn clone_repository(
         &self,
         url: &str,

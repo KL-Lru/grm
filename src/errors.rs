@@ -44,4 +44,13 @@ pub enum GrmError {
 
     #[error("Resource not found: {0}")]
     NotFound(String),
+
+    #[error("Not a git repository: {0}")]
+    NotAGitRepository(String),
+
+    #[error("No remote origin found in repository: {0}")]
+    NoRemoteOrigin(String),
+
+    #[error("Repository is already managed by GRM: {0}")]
+    AlreadyManaged(String),
 }

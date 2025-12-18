@@ -47,6 +47,15 @@ If `--full-path` is specified, full paths are listed.
 grm list [--full-path]
 ```
 
+### move
+
+Move a directory into the managed repositories.
+The directory must be a Git repository.
+
+```bash
+grm move <path>
+```
+
 ### remove
 
 Remove a managed Git repository.

@@ -18,6 +18,7 @@ pub struct MockGitRepository {
     cloned_repos: RefCell<Vec<(String, PathBuf)>>,
     worktrees: RefCell<Vec<PathBuf>>,
     initialized_repos: RefCell<Vec<(PathBuf, String)>>,
+    current_branches: RefCell<HashMap<PathBuf, String>>,
     force_error: RefCell<Option<GitError>>,
 }
 
@@ -32,6 +33,7 @@ impl MockGitRepository {
             cloned_repos: RefCell::new(Vec::new()),
             worktrees: RefCell::new(Vec::new()),
             initialized_repos: RefCell::new(Vec::new()),
+            current_branches: RefCell::new(HashMap::new()),
             force_error: RefCell::new(None),
         }
     }
@@ -69,6 +71,13 @@ impl MockGitRepository {
             .entry(url)
             .or_default()
             .push(branch);
+    }
+
+    /// Set the current branch for a repository path
+    pub fn set_current_branch(&self, repo_path: impl AsRef<Path>, branch: impl Into<String>) {
+        self.current_branches
+            .borrow_mut()
+            .insert(repo_path.as_ref().to_path_buf(), branch.into());
     }
 
     /// Inject an error to be returned on the next operation
@@ -155,6 +164,18 @@ impl GitRepository for MockGitRepository {
             .get(remote_url)
             .map(|branches| branches.contains(&branch.to_string()))
             .unwrap_or(false))
+    }
+
+    fn get_current_branch(&self, repo_path: &Path) -> Result<String, GitError> {
+        self.check_error()?;
+
+        self.current_branches
+            .borrow()
+            .get(repo_path)
+            .cloned()
+            .ok_or_else(|| {
+                GitError::Parse(format!("No current branch set for {}", repo_path.display()))
+            })
     }
 
     fn clone_repository(

@@ -23,6 +23,8 @@ pub trait GitRepository {
 
     fn remote_branch_exists(&self, remote_url: &str, branch: &str) -> Result<bool, GitError>;
 
+    fn get_current_branch(&self, repo_path: &Path) -> Result<String, GitError>;
+
     fn clone_repository(
         &self,
         url: &str,
