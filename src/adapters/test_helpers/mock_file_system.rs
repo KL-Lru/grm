@@ -93,16 +93,6 @@ impl MockFileSystem {
         *self.current_dir.borrow_mut() = path.as_ref().to_path_buf();
     }
 
-    /// Set the home directory for testing
-    pub fn set_home_dir(&mut self, path: impl AsRef<Path>) {
-        self.home_dir = path.as_ref().to_path_buf();
-    }
-
-    /// Inject an error to be returned on the next operation
-    pub fn inject_error(&self, error: FileSystemError) {
-        *self.force_error.borrow_mut() = Some(error);
-    }
-
     fn check_error(&self) -> Result<(), FileSystemError> {
         if let Some(err) = self.force_error.borrow_mut().take() {
             return Err(err);

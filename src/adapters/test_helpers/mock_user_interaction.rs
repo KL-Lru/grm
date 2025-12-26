@@ -52,11 +52,6 @@ impl MockUserInteraction {
         self.printed_messages.borrow().clone()
     }
 
-    /// Get error messages (for assertions)
-    pub fn get_error_messages(&self) -> Vec<String> {
-        self.error_messages.borrow().clone()
-    }
-
     /// Check if a message was printed
     pub fn has_printed(&self, expected: &str) -> bool {
         self.printed_messages
