@@ -103,17 +103,13 @@ impl MockFileSystem {
     /// * `None` - If the link does not exist or is not a symlink
     pub fn read_link(&self, path: impl AsRef<Path>) -> Option<PathBuf> {
         let path = path.as_ref();
-        self.entries
-            .lock()
-            .unwrap()
-            .get(path)
-            .and_then(|entry| {
-                if entry.is_symlink {
-                    entry.target.clone()
-                } else {
-                    None
-                }
-            })
+        self.entries.lock().unwrap().get(path).and_then(|entry| {
+            if entry.is_symlink {
+                entry.target.clone()
+            } else {
+                None
+            }
+        })
     }
 
     fn check_error(&self) -> Result<(), FileSystemError> {

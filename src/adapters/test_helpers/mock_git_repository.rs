@@ -46,14 +46,16 @@ impl MockGitRepository {
     /// Set the default branch for a URL
     pub fn set_default_branch(&self, url: impl Into<String>, branch: impl Into<String>) {
         self.default_branches
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .insert(url.into(), branch.into());
     }
 
     /// Set the remote URL for a repository
     pub fn set_remote_url(&self, repo_path: impl AsRef<Path>, url: impl Into<String>) {
         self.remote_urls
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .insert(repo_path.as_ref().to_path_buf(), url.into());
     }
 
@@ -67,7 +69,8 @@ impl MockGitRepository {
         let url = url.into();
         let branch = branch.into();
         self.remote_branches
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .entry(url)
             .or_default()
             .push(branch);
@@ -76,7 +79,8 @@ impl MockGitRepository {
     /// Set the current branch for a repository path
     pub fn set_current_branch(&self, repo_path: impl AsRef<Path>, branch: impl Into<String>) {
         self.current_branches
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .insert(repo_path.as_ref().to_path_buf(), branch.into());
     }
 
@@ -119,7 +123,8 @@ impl GitRepository for MockGitRepository {
         self.check_error()?;
 
         self.default_branches
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .get(url)
             .cloned()
             .ok_or_else(|| GitError::Parse(format!("No default branch configured for {url}")))
@@ -129,7 +134,8 @@ impl GitRepository for MockGitRepository {
         self.check_error()?;
 
         self.repo_root
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .clone()
             .ok_or_else(|| GitError::Parse("No repository root configured".into()))
     }
@@ -138,7 +144,8 @@ impl GitRepository for MockGitRepository {
         self.check_error()?;
 
         self.remote_urls
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .get(repo_path)
             .cloned()
             .ok_or_else(|| {
@@ -152,7 +159,11 @@ impl GitRepository for MockGitRepository {
     fn local_branch_exists(&self, branch: &str) -> Result<bool, GitError> {
         self.check_error()?;
 
-        Ok(self.local_branches.lock().unwrap().contains(&branch.to_string()))
+        Ok(self
+            .local_branches
+            .lock()
+            .unwrap()
+            .contains(&branch.to_string()))
     }
 
     fn remote_branch_exists(&self, remote_url: &str, branch: &str) -> Result<bool, GitError> {
@@ -160,7 +171,8 @@ impl GitRepository for MockGitRepository {
 
         Ok(self
             .remote_branches
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .get(remote_url)
             .is_some_and(|branches| branches.contains(&branch.to_string())))
     }
@@ -169,7 +181,8 @@ impl GitRepository for MockGitRepository {
         self.check_error()?;
 
         self.current_branches
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .get(repo_path)
             .cloned()
             .ok_or_else(|| {
@@ -186,7 +199,8 @@ impl GitRepository for MockGitRepository {
         self.check_error()?;
 
         self.cloned_repos
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .push((url.to_string(), destination.to_path_buf()));
 
         Ok(())
@@ -201,7 +215,8 @@ impl GitRepository for MockGitRepository {
         self.check_error()?;
 
         self.worktrees
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .push(worktree_path.to_path_buf());
 
         if create_new {
@@ -224,7 +239,8 @@ impl GitRepository for MockGitRepository {
         self.check_error()?;
 
         self.initialized_repos
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .push((destination.to_path_buf(), branch.to_string()));
 
         Ok(())

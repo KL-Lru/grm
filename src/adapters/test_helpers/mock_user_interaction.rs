@@ -25,11 +25,17 @@ impl UserInteraction for MockUserInteraction {
     }
 
     fn print(&self, message: &str) {
-        self.printed_messages.lock().unwrap().push(message.to_string());
+        self.printed_messages
+            .lock()
+            .unwrap()
+            .push(message.to_string());
     }
 
     fn print_error(&self, message: &str) {
-        self.error_messages.lock().unwrap().push(message.to_string());
+        self.error_messages
+            .lock()
+            .unwrap()
+            .push(message.to_string());
     }
 }
 
@@ -55,7 +61,8 @@ impl MockUserInteraction {
     /// Check if a message was printed
     pub fn has_printed(&self, expected: &str) -> bool {
         self.printed_messages
-            .lock().unwrap()
+            .lock()
+            .unwrap()
             .iter()
             .any(|msg| msg.contains(expected))
     }
