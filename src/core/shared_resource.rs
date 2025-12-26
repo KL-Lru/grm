@@ -132,26 +132,24 @@ impl SharedResource {
             )));
         }
 
-        // Check if already shared
-        if self.fs.is_symlink(&file) {
-            return Ok(());
-        }
-
         // Move the file to shared storage if it's not a symlink
-        if let Some(parent) = shared_path.parent() {
-            self.fs.create_dir(parent)?;
+        if !self.fs.is_symlink(&file) {
+            if let Some(parent) = shared_path.parent() {
+                self.fs.create_dir(parent)?;
+            }
+
+            if self.fs.exists(&shared_path) {
+                self.fs.remove(&shared_path)?;
+            }
+
+            self.fs.rename(&file, &shared_path)?;
         }
 
-        if self.fs.exists(&shared_path) {
-            self.fs.remove(&shared_path)?;
-        }
-
-        self.fs.rename(&file, &shared_path)?;
         let worktrees = self.scanner.scan_worktrees(&self.root, &self.repo_info)?;
 
         // Create symlinks in all worktrees
         for worktree in &worktrees {
-            let target_in_worktree = worktree.join(relative_path);
+            let target_in_worktree = worktree.join(repo_relative_path);
 
             if self.fs.exists(&target_in_worktree) || self.fs.is_symlink(&target_in_worktree) {
                 self.fs.remove(&target_in_worktree)?;
