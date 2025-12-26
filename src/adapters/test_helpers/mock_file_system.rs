@@ -13,6 +13,7 @@ use crate::core::ports::{FileSystem, FileSystemError};
 struct MockFsEntry {
     is_symlink: bool,
     is_dir: bool,
+    target: Option<PathBuf>, // For symlinks - the path the symlink points to
 }
 
 /// Mock filesystem for testing
@@ -33,6 +34,7 @@ impl MockFileSystem {
         let root_entry = MockFsEntry {
             is_symlink: false,
             is_dir: true,
+            target: None,
         };
         entries.insert(PathBuf::from("/"), root_entry);
 
@@ -50,6 +52,7 @@ impl MockFileSystem {
         let entry = MockFsEntry {
             is_symlink: false,
             is_dir: false,
+            target: None,
         };
         self.entries.lock().unwrap().insert(path, entry);
     }
@@ -60,6 +63,7 @@ impl MockFileSystem {
         let entry = MockFsEntry {
             is_symlink: false,
             is_dir: true,
+            target: None,
         };
         self.entries.lock().unwrap().insert(path, entry);
     }
@@ -73,11 +77,13 @@ impl MockFileSystem {
     }
 
     /// Add a symlink to the mock filesystem
-    pub fn add_symlink(&self, link: impl AsRef<Path>, _target: impl AsRef<Path>) {
+    pub fn add_symlink(&self, link: impl AsRef<Path>, target: impl AsRef<Path>) {
         let link = link.as_ref().to_path_buf();
+        let target = target.as_ref().to_path_buf();
         let entry = MockFsEntry {
             is_symlink: true,
             is_dir: false,
+            target: Some(target),
         };
         self.entries.lock().unwrap().insert(link, entry);
     }
@@ -85,6 +91,29 @@ impl MockFileSystem {
     /// Set the current directory for testing
     pub fn set_current_dir(&self, path: impl AsRef<Path>) {
         *self.current_dir.lock().unwrap() = path.as_ref().to_path_buf();
+    }
+
+    /// Read the target of a symlink (for testing)
+    ///
+    /// # Arguments
+    /// * `path` - The symlink path to read
+    ///
+    /// # Returns
+    /// * `Some(PathBuf)` - The target path if the link exists and is a symlink
+    /// * `None` - If the link does not exist or is not a symlink
+    pub fn read_link(&self, path: impl AsRef<Path>) -> Option<PathBuf> {
+        let path = path.as_ref();
+        self.entries
+            .lock()
+            .unwrap()
+            .get(path)
+            .and_then(|entry| {
+                if entry.is_symlink {
+                    entry.target.clone()
+                } else {
+                    None
+                }
+            })
     }
 
     fn check_error(&self) -> Result<(), FileSystemError> {

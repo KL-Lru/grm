@@ -110,6 +110,15 @@ mod tests {
                 .iter()
                 .any(|m| m.contains("Shared test.txt across worktrees"))
         );
+
+        // シンボリックリンクが正しいターゲットを指していることを確認
+        let shared_path = PathBuf::from("/test_root/.shared/github.com/user/repo/test.txt");
+        let link = mock_fs.read_link(repo_root.join("test.txt"));
+        assert_eq!(
+            link,
+            Some(shared_path),
+            "Symlink should point to the shared storage"
+        );
     }
 
     #[test]
@@ -162,6 +171,13 @@ mod tests {
                 .iter()
                 .any(|m| m.contains("The following files will be overwritten"))
         );
+
+        // すべてのワークツリーでシンボリックリンクが正しいターゲットを指していることを確認
+        let link_main = mock_fs.read_link(repo_root.join("test.txt"));
+        assert_eq!(link_main, Some(shared_file.clone()));
+
+        let link_feature = mock_fs.read_link(worktree.join("test.txt"));
+        assert_eq!(link_feature, Some(shared_file));
     }
 
     #[test]

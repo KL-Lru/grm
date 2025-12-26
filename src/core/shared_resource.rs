@@ -288,6 +288,13 @@ mod tests {
         // 各ワークツリーにシンボリックリンクが作成される
         assert!(fs.is_symlink(&repo_root.join("config.json")));
         assert!(fs.is_symlink(&root.join("github.com/user/repo+feature/config.json")));
+
+        // シンボリックリンクが正しいターゲットを指している
+        let link1 = fs.read_link(repo_root.join("config.json"));
+        assert_eq!(link1, Some(shared_path.clone()));
+
+        let link2 = fs.read_link(root.join("github.com/user/repo+feature/config.json"));
+        assert_eq!(link2, Some(shared_path));
     }
 
     #[test]
@@ -313,6 +320,10 @@ mod tests {
 
         let shared_path = root.join(".shared/github.com/user/repo/shared_dir");
         assert!(fs.exists(&shared_path));
+
+        // ディレクトリのシンボリックリンクが正しいターゲットを指している
+        let link = fs.read_link(repo_root.join("shared_dir"));
+        assert_eq!(link, Some(shared_path));
     }
 
     #[test]
