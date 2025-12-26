@@ -83,9 +83,9 @@ mod tests {
         let root = PathBuf::from("/grm");
 
         fs.add_dir(&root);
-        fs.add_git_repo(&root.join("repo1"));
-        fs.add_git_repo(&root.join("repo2"));
-        fs.add_git_repo(&root.join("repo3"));
+        fs.add_git_repo(root.join("repo1"));
+        fs.add_git_repo(root.join("repo2"));
+        fs.add_git_repo(root.join("repo3"));
 
         let scanner = RepoScanner::new(fs);
         let result = scanner.scan_repositories(&root);
@@ -109,14 +109,14 @@ mod tests {
         let root = PathBuf::from("/grm");
 
         fs.add_dir(&root);
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo1"));
-        fs.add_git_repo(&root.join("github.com/user/repo2"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo1"));
+        fs.add_git_repo(root.join("github.com/user/repo2"));
 
-        fs.add_dir(&root.join("gitlab.com"));
-        fs.add_dir(&root.join("gitlab.com/org"));
-        fs.add_git_repo(&root.join("gitlab.com/org/project"));
+        fs.add_dir(root.join("gitlab.com"));
+        fs.add_dir(root.join("gitlab.com/org"));
+        fs.add_git_repo(root.join("gitlab.com/org/project"));
 
         let scanner = RepoScanner::new(fs);
         let result = scanner.scan_repositories(&root);
@@ -139,8 +139,8 @@ mod tests {
         let root = PathBuf::from("/grm");
 
         fs.add_dir(&root);
-        fs.add_git_repo(&root.join("real_repo"));
-        fs.add_symlink(&root.join("link_to_repo"), &root.join("real_repo"));
+        fs.add_git_repo(root.join("real_repo"));
+        fs.add_symlink(root.join("link_to_repo"), root.join("real_repo"));
 
         let scanner = RepoScanner::new(fs);
         let result = scanner.scan_repositories(&root);
@@ -162,11 +162,11 @@ mod tests {
         let root = PathBuf::from("/grm");
 
         fs.add_dir(&root);
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo1+main"));
-        fs.add_git_repo(&root.join("github.com/user/repo1+feature"));
-        fs.add_git_repo(&root.join("github.com/user/repo2+main"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo1+main"));
+        fs.add_git_repo(root.join("github.com/user/repo1+feature"));
+        fs.add_git_repo(root.join("github.com/user/repo2+main"));
 
         let scanner = RepoScanner::new(fs);
 
@@ -192,7 +192,7 @@ mod tests {
         let root = PathBuf::from("/grm");
 
         fs.add_dir(&root);
-        fs.add_dir(&root.join("empty_dir"));
+        fs.add_dir(root.join("empty_dir"));
 
         let scanner = RepoScanner::new(fs);
         let result = scanner.scan_repositories(&root);

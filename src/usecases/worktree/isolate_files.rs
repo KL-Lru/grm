@@ -74,7 +74,7 @@ mod tests {
         // Setup: File is a symlink to shared storage
         let shared_file = PathBuf::from("/test_root/.shared/github.com/user/repo/test.txt");
         mock_fs.add_file(&shared_file);
-        mock_fs.add_symlink(&repo_root.join("test.txt"), &shared_file);
+        mock_fs.add_symlink(repo_root.join("test.txt"), &shared_file);
 
         let usecase = IsolateFilesUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
 

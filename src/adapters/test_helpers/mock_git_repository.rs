@@ -122,7 +122,7 @@ impl GitRepository for MockGitRepository {
             .borrow()
             .get(url)
             .cloned()
-            .ok_or_else(|| GitError::Parse(format!("No default branch configured for {}", url)))
+            .ok_or_else(|| GitError::Parse(format!("No default branch configured for {url}")))
     }
 
     fn get_repository_root(&self) -> Result<PathBuf, GitError> {
@@ -162,8 +162,7 @@ impl GitRepository for MockGitRepository {
             .remote_branches
             .borrow()
             .get(remote_url)
-            .map(|branches| branches.contains(&branch.to_string()))
-            .unwrap_or(false))
+            .is_some_and(|branches| branches.contains(&branch.to_string())))
     }
 
     fn get_current_branch(&self, repo_path: &Path) -> Result<String, GitError> {

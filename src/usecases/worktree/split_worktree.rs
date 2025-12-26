@@ -94,7 +94,7 @@ mod tests {
 
         // Assert
         if let Err(ref e) = result {
-            eprintln!("Error: {:?}", e);
+            eprintln!("Error: {e:?}");
         }
         assert!(result.is_ok(), "Failed with error: {:?}", result.err());
         let worktrees = mock_git.get_worktrees();

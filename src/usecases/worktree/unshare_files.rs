@@ -83,11 +83,11 @@ mod tests {
         // Setup: Shared file with symlinks in multiple worktrees
         let shared_file = PathBuf::from("/test_root/.shared/github.com/user/repo/test.txt");
         mock_fs.add_file(&shared_file);
-        mock_fs.add_symlink(&repo_root.join("test.txt"), &shared_file);
+        mock_fs.add_symlink(repo_root.join("test.txt"), &shared_file);
 
         let worktree = PathBuf::from("/test_root/github.com/user/repo+feature");
         mock_fs.add_git_repo(&worktree);
-        mock_fs.add_symlink(&worktree.join("test.txt"), &shared_file);
+        mock_fs.add_symlink(worktree.join("test.txt"), &shared_file);
 
         let usecase = UnshareFilesUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
 

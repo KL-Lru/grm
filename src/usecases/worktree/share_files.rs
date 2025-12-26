@@ -88,7 +88,7 @@ mod tests {
 
         // Set current directory to repo root
         mock_fs.set_current_dir(&repo_root);
-        mock_fs.add_file(&repo_root.join("test.txt"));
+        mock_fs.add_file(repo_root.join("test.txt"));
 
         let usecase = ShareFilesUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
 
@@ -101,7 +101,7 @@ mod tests {
 
         // Assert
         if let Err(ref e) = result {
-            eprintln!("Error: {:?}", e);
+            eprintln!("Error: {e:?}");
         }
         assert!(result.is_ok(), "Failed with error: {:?}", result.err());
         let messages = mock_ui.get_printed_messages();
@@ -138,12 +138,12 @@ mod tests {
         // Setup: File is already shared (exists in shared storage and is a symlink in repo+main)
         let shared_file = PathBuf::from("/test_root/.shared/github.com/user/repo/test.txt");
         mock_fs.add_file(&shared_file);
-        mock_fs.add_symlink(&repo_root.join("test.txt"), &shared_file);
+        mock_fs.add_symlink(repo_root.join("test.txt"), &shared_file);
 
         // Add conflicting worktree with a real file (not a symlink)
         let worktree = PathBuf::from("/test_root/github.com/user/repo+feature");
         mock_fs.add_git_repo(&worktree);
-        mock_fs.add_file(&worktree.join("test.txt"));
+        mock_fs.add_file(worktree.join("test.txt"));
 
         let usecase = ShareFilesUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
 
@@ -190,12 +190,12 @@ mod tests {
         // Setup: File is already shared (exists in shared storage and is a symlink in repo+main)
         let shared_file = PathBuf::from("/test_root/.shared/github.com/user/repo/test.txt");
         mock_fs.add_file(&shared_file);
-        mock_fs.add_symlink(&repo_root.join("test.txt"), &shared_file);
+        mock_fs.add_symlink(repo_root.join("test.txt"), &shared_file);
 
         // Add conflicting worktree with a real file (not a symlink)
         let worktree = PathBuf::from("/test_root/github.com/user/repo+feature");
         mock_fs.add_git_repo(&worktree);
-        mock_fs.add_file(&worktree.join("test.txt"));
+        mock_fs.add_file(worktree.join("test.txt"));
 
         let usecase = ShareFilesUseCase::new(mock_git.clone(), mock_fs.clone(), mock_ui.clone());
 

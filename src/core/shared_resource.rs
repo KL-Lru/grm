@@ -267,13 +267,13 @@ mod tests {
         let (fs, repo_info, root) = setup();
 
         // ワークツリーとファイルの準備
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo+main"));
-        fs.add_git_repo(&root.join("github.com/user/repo+feature"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo+main"));
+        fs.add_git_repo(root.join("github.com/user/repo+feature"));
 
         let repo_root = root.join("github.com/user/repo+main");
-        fs.add_file(&repo_root.join("config.json"));
+        fs.add_file(repo_root.join("config.json"));
         fs.set_current_dir(&repo_root);
 
         let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
@@ -297,13 +297,13 @@ mod tests {
 
         let (fs, repo_info, root) = setup();
 
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo+main"));
 
         let repo_root = root.join("github.com/user/repo+main");
-        fs.add_dir(&repo_root.join("shared_dir"));
-        fs.add_file(&repo_root.join("shared_dir/file.txt"));
+        fs.add_dir(repo_root.join("shared_dir"));
+        fs.add_file(repo_root.join("shared_dir/file.txt"));
         fs.set_current_dir(&repo_root);
 
         let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
@@ -322,23 +322,23 @@ mod tests {
 
         let (fs, repo_info, root) = setup();
 
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo+main"));
-        fs.add_git_repo(&root.join("github.com/user/repo+feature"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo+main"));
+        fs.add_git_repo(root.join("github.com/user/repo+feature"));
 
         let repo_root = root.join("github.com/user/repo+main");
         let shared_file = root.join(".shared/github.com/user/repo/config.json");
-        fs.add_dir(&root.join(".shared"));
-        fs.add_dir(&root.join(".shared/github.com"));
-        fs.add_dir(&root.join(".shared/github.com/user"));
-        fs.add_dir(&root.join(".shared/github.com/user/repo"));
+        fs.add_dir(root.join(".shared"));
+        fs.add_dir(root.join(".shared/github.com"));
+        fs.add_dir(root.join(".shared/github.com/user"));
+        fs.add_dir(root.join(".shared/github.com/user/repo"));
         fs.add_file(&shared_file);
 
         // シンボリックリンクを作成
-        fs.add_symlink(&repo_root.join("config.json"), &shared_file);
+        fs.add_symlink(repo_root.join("config.json"), &shared_file);
         fs.add_symlink(
-            &root.join("github.com/user/repo+feature/config.json"),
+            root.join("github.com/user/repo+feature/config.json"),
             &shared_file,
         );
         fs.set_current_dir(&repo_root);
@@ -361,18 +361,18 @@ mod tests {
 
         let (fs, repo_info, root) = setup();
 
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo+main"));
 
         let repo_root = root.join("github.com/user/repo+main");
         let shared_file = root.join(".shared/github.com/user/repo/config.json");
-        fs.add_dir(&root.join(".shared"));
-        fs.add_dir(&root.join(".shared/github.com"));
-        fs.add_dir(&root.join(".shared/github.com/user"));
-        fs.add_dir(&root.join(".shared/github.com/user/repo"));
+        fs.add_dir(root.join(".shared"));
+        fs.add_dir(root.join(".shared/github.com"));
+        fs.add_dir(root.join(".shared/github.com/user"));
+        fs.add_dir(root.join(".shared/github.com/user/repo"));
         fs.add_file(&shared_file);
-        fs.add_symlink(&repo_root.join("config.json"), &shared_file);
+        fs.add_symlink(repo_root.join("config.json"), &shared_file);
         fs.set_current_dir(&repo_root);
 
         let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
@@ -392,20 +392,20 @@ mod tests {
 
         let (fs, repo_info, root) = setup();
 
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo+main"));
-        fs.add_git_repo(&root.join("github.com/user/repo+feature"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo+main"));
+        fs.add_git_repo(root.join("github.com/user/repo+feature"));
 
         let repo_root = root.join("github.com/user/repo+main");
         let shared_file = root.join(".shared/github.com/user/repo/config.json");
-        fs.add_dir(&root.join(".shared"));
-        fs.add_dir(&root.join(".shared/github.com"));
-        fs.add_dir(&root.join(".shared/github.com/user"));
-        fs.add_dir(&root.join(".shared/github.com/user/repo"));
+        fs.add_dir(root.join(".shared"));
+        fs.add_dir(root.join(".shared/github.com"));
+        fs.add_dir(root.join(".shared/github.com/user"));
+        fs.add_dir(root.join(".shared/github.com/user/repo"));
         fs.add_file(&shared_file);
-        fs.add_file(&repo_root.join("config.json"));
-        fs.add_file(&root.join("github.com/user/repo+feature/config.json"));
+        fs.add_file(repo_root.join("config.json"));
+        fs.add_file(root.join("github.com/user/repo+feature/config.json"));
         fs.set_current_dir(&repo_root);
 
         let shared = SharedResource::new(repo_info, fs.clone(), root.clone());
@@ -425,16 +425,16 @@ mod tests {
 
         let (fs, repo_info, root) = setup();
 
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo+new"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo+new"));
 
         let shared_root = root.join(".shared/github.com/user/repo");
-        fs.add_dir(&root.join(".shared"));
-        fs.add_dir(&root.join(".shared/github.com"));
-        fs.add_dir(&root.join(".shared/github.com/user"));
+        fs.add_dir(root.join(".shared"));
+        fs.add_dir(root.join(".shared/github.com"));
+        fs.add_dir(root.join(".shared/github.com/user"));
         fs.add_dir(&shared_root);
-        fs.add_file(&shared_root.join("config.json"));
+        fs.add_file(shared_root.join("config.json"));
 
         let repo_root = root.join("github.com/user/repo+new");
 
@@ -454,9 +454,9 @@ mod tests {
 
         let (fs, repo_info, root) = setup();
 
-        fs.add_dir(&root.join("github.com"));
-        fs.add_dir(&root.join("github.com/user"));
-        fs.add_git_repo(&root.join("github.com/user/repo+main"));
+        fs.add_dir(root.join("github.com"));
+        fs.add_dir(root.join("github.com/user"));
+        fs.add_git_repo(root.join("github.com/user/repo+main"));
 
         let repo_root = root.join("github.com/user/repo+main");
         fs.set_current_dir(&repo_root);
