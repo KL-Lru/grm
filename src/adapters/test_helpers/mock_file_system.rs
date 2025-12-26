@@ -2,9 +2,9 @@
 //!
 //! Provides an in-memory filesystem simulation with basic operations.
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use crate::core::ports::{FileSystem, FileSystemError};
 
@@ -13,17 +13,16 @@ use crate::core::ports::{FileSystem, FileSystemError};
 struct MockFsEntry {
     is_symlink: bool,
     is_dir: bool,
-    target: Option<PathBuf>, // For symlinks
 }
 
 /// Mock filesystem for testing
 ///
 /// Provides an in-memory filesystem simulation with basic operations.
 pub struct MockFileSystem {
-    entries: RefCell<HashMap<PathBuf, MockFsEntry>>,
+    entries: Mutex<HashMap<PathBuf, MockFsEntry>>,
     home_dir: PathBuf,
-    current_dir: RefCell<PathBuf>,
-    force_error: RefCell<Option<FileSystemError>>,
+    current_dir: Mutex<PathBuf>,
+    force_error: Mutex<Option<FileSystemError>>,
 }
 
 impl MockFileSystem {
@@ -34,15 +33,14 @@ impl MockFileSystem {
         let root_entry = MockFsEntry {
             is_symlink: false,
             is_dir: true,
-            target: None,
         };
         entries.insert(PathBuf::from("/"), root_entry);
 
         Self {
-            entries: RefCell::new(entries),
+            entries: Mutex::new(entries),
             home_dir: PathBuf::from("/home/testuser"),
-            current_dir: RefCell::new(PathBuf::from("/home/testuser/work")),
-            force_error: RefCell::new(None),
+            current_dir: Mutex::new(PathBuf::from("/home/testuser/work")),
+            force_error: Mutex::new(None),
         }
     }
 
@@ -52,9 +50,8 @@ impl MockFileSystem {
         let entry = MockFsEntry {
             is_symlink: false,
             is_dir: false,
-            target: None,
         };
-        self.entries.borrow_mut().insert(path, entry);
+        self.entries.lock().unwrap().insert(path, entry);
     }
 
     /// Add a directory to the mock filesystem
@@ -63,9 +60,8 @@ impl MockFileSystem {
         let entry = MockFsEntry {
             is_symlink: false,
             is_dir: true,
-            target: None,
         };
-        self.entries.borrow_mut().insert(path, entry);
+        self.entries.lock().unwrap().insert(path, entry);
     }
 
     /// Add a git repository to the mock filesystem
@@ -77,24 +73,22 @@ impl MockFileSystem {
     }
 
     /// Add a symlink to the mock filesystem
-    pub fn add_symlink(&self, link: impl AsRef<Path>, target: impl AsRef<Path>) {
+    pub fn add_symlink(&self, link: impl AsRef<Path>, _target: impl AsRef<Path>) {
         let link = link.as_ref().to_path_buf();
-        let target = target.as_ref().to_path_buf();
         let entry = MockFsEntry {
             is_symlink: true,
             is_dir: false,
-            target: Some(target),
         };
-        self.entries.borrow_mut().insert(link, entry);
+        self.entries.lock().unwrap().insert(link, entry);
     }
 
     /// Set the current directory for testing
     pub fn set_current_dir(&self, path: impl AsRef<Path>) {
-        *self.current_dir.borrow_mut() = path.as_ref().to_path_buf();
+        *self.current_dir.lock().unwrap() = path.as_ref().to_path_buf();
     }
 
     fn check_error(&self) -> Result<(), FileSystemError> {
-        if let Some(err) = self.force_error.borrow_mut().take() {
+        if let Some(err) = self.force_error.lock().unwrap().take() {
             return Err(err);
         }
         Ok(())
@@ -109,18 +103,23 @@ impl Default for MockFileSystem {
 
 impl FileSystem for MockFileSystem {
     fn exists(&self, path: &Path) -> bool {
-        self.entries.borrow().contains_key(path)
+        self.entries.lock().unwrap().contains_key(path)
     }
 
     fn is_symlink(&self, path: &Path) -> bool {
         self.entries
-            .borrow()
+            .lock()
+            .unwrap()
             .get(path)
             .is_some_and(|e| e.is_symlink)
     }
 
     fn is_dir(&self, path: &Path) -> bool {
-        self.entries.borrow().get(path).is_some_and(|e| e.is_dir)
+        self.entries
+            .lock()
+            .unwrap()
+            .get(path)
+            .is_some_and(|e| e.is_dir)
     }
 
     fn is_git_repository(&self, path: &Path) -> bool {
@@ -135,13 +134,13 @@ impl FileSystem for MockFileSystem {
 
     fn current_dir(&self) -> Result<PathBuf, FileSystemError> {
         self.check_error()?;
-        Ok(self.current_dir.borrow().clone())
+        Ok(self.current_dir.lock().unwrap().clone())
     }
 
     fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>, FileSystemError> {
         self.check_error()?;
 
-        let entries = self.entries.borrow();
+        let entries = self.entries.lock().unwrap();
 
         // Check if the path exists and is a directory
         if !entries.contains_key(path) {
@@ -191,7 +190,7 @@ impl FileSystem for MockFileSystem {
     fn copy(&self, from: &Path, to: &Path) -> Result<(), FileSystemError> {
         self.check_error()?;
 
-        let entries = self.entries.borrow();
+        let entries = self.entries.lock().unwrap();
         let entry = entries
             .get(from)
             .ok_or_else(|| {
@@ -215,7 +214,7 @@ impl FileSystem for MockFileSystem {
             }
         } else {
             // File copy
-            self.entries.borrow_mut().insert(to.to_path_buf(), entry);
+            self.entries.lock().unwrap().insert(to.to_path_buf(), entry);
         }
 
         Ok(())
@@ -224,7 +223,7 @@ impl FileSystem for MockFileSystem {
     fn rename(&self, from: &Path, to: &Path) -> Result<(), FileSystemError> {
         self.check_error()?;
 
-        let mut entries = self.entries.borrow_mut();
+        let mut entries = self.entries.lock().unwrap();
 
         // For directories, we need to rename all children as well
         let is_dir = entries.get(from).is_some_and(|e| e.is_dir);
@@ -264,7 +263,7 @@ impl FileSystem for MockFileSystem {
     fn remove(&self, path: &Path) -> Result<(), FileSystemError> {
         self.check_error()?;
 
-        let mut entries = self.entries.borrow_mut();
+        let mut entries = self.entries.lock().unwrap();
 
         // Remove path and all children
         let to_remove: Vec<PathBuf> = entries
